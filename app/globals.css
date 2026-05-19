@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+:root {
+  --navy-900: #0D1F35;
+  --navy-800: #1A2E4A;
+  --navy-700: #254468;
+  --blue:     #1D4ED8;
+  --blue-50:  #EFF6FF;
+  --gold:     #B45309;
+  --surface:  #F4F6F9;
+  --card:     #FFFFFF;
+  --border:   #DDE5EF;
+  --text-900: #0D1B2E;
+  --text-600: #4B6480;
+  --text-300: #96ADBF;
+}
+
+body {
+  font-family: var(--font-sarabun), 'Sarabun', 'Noto Sans Thai', sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+  background: var(--surface);
+  color: var(--text-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Form utilities ─────────────────────────────── */
+.label {
+  @apply block text-sm font-semibold mb-1.5;
+  color: var(--text-600);
+  letter-spacing: 0.01em;
+}
+
+.input {
+  @apply w-full rounded-lg px-4 py-3 text-lg transition-all;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  color: var(--text-900);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.input::placeholder { color: var(--text-300); }
+.input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.input:disabled {
+  background: var(--surface);
+  color: var(--text-300);
+  cursor: not-allowed;
+}
+
+textarea.input { resize: vertical; }
+
+select.input { cursor: pointer; }
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-lg font-semibold transition-all;
+  background: var(--blue);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  border: none;
+}
+.btn-primary:hover  { background: #1A45C5; }
+.btn-primary:focus  { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 25%, transparent); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-lg font-medium transition-all;
+  background: var(--card);
+  color: var(--text-600);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: 1.5px solid var(--border);
+}
+.btn-secondary:hover { background: var(--surface); border-color: #B0C0D5; }
+.btn-secondary:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, #000 8%, transparent); }
+
+/* ── Layout utilities ───────────────────────────── */
+.app-nav {
+  background: var(--navy-800);
+  color: #fff;
+  border-bottom: 1px solid color-mix(in srgb, #fff 8%, transparent);
+}
+
+.section-card {
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 5%, transparent);
+}
+
+@media (min-width: 640px) {
+  .section-card { padding: 2rem; }
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-900);
+  line-height: 1.4;
+}
+
+/* Nav back button */
+.app-nav-back {
+  color: rgba(255,255,255,0.4);
+  transition: color 0.15s;
+}
+.app-nav-back:hover { color: #fff; }
+
+/* Home action cards */
+.action-card {
+  display: block;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+}
+.action-card:hover {
+  border-color: #9BB4CF;
+  box-shadow: 0 4px 12px rgba(13,31,53,0.1);
+}
+.action-card:hover .action-card-arrow {
+  transform: translateX(2px);
+}
+.action-card-arrow {
+  transition: transform 0.15s;
+}
+
+/* ── Animations ─────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-fade-in  { animation: fadeSlideIn 0.25s ease both; }
+.animate-spin     { animation: spin 0.7s linear infinite; }
+
+/* ── Tooltip ─────────────────────────────────────── */
+.tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy-900);
+  color: rgba(255,255,255,0.9);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.tooltip-box::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--navy-900);
+}
+.tooltip-box-left {
+  left: auto;
+  right: 0;
+  transform: none;
+  white-space: normal;
+  width: 220px;
+  text-align: left;
+}
+.tooltip-box-left::after {
+  left: auto;
+  right: 10px;
+  transform: none;
+}
+.group:hover .tooltip-box { opacity: 1; }
+
+/* ── Step badge ─────────────────────────────────── */
+.step-badge {
+  @apply inline-flex items-center justify-center w-7 h-7 rounded-full shrink-0;
+  background: var(--navy-800);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
