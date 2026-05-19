@@ -42,15 +42,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## MemoSheet Template Rules
 The A4 preview must match the Thai government standard 100%:
-- **Font**: TH Sarabun New 16pt (`font-family: 'TH Sarabun New', 'TH SarabunIT9', 'Sarabun', serif`)
-- **Title**: "บันทึกข้อความ" — 29pt bold, centered in grid (garuda left, title center, blank right)
-- **Garuda**: `<img class="memo-garuda" src="/garuda.png">` — 24mm wide, top-left of header row
+- **Font**: TH SarabunIT9 16pt (`font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif`) — ระเบียบกำหนด TH SarabunIT9
+- **Title**: "บันทึกข้อความ" — 30pt bold, centered in grid (garuda left, title center, blank right); ระเบียบ: 30-33pt
+- **Garuda**: `<img class="memo-garuda" src="/garuda.png">` — **15mm** wide (1.5 ซม. ตามระเบียบสำหรับบันทึกข้อความ); หนังสือภายนอกใช้ 3 ซม.
 - **Meta rows**: each value uses `.meta-value-dotted` (`border-bottom: 1px dotted #000`) filling remaining width
 - **"ที่" + "วันที่"** on same row — "ที่" value uses `meta-half` (flex 0 0 38%), "วันที่" value fills rest
-- **Margins**: 25mm top, 25mm right, 20mm bottom, 30mm left (ระเบียบสารบรรณ)
-- **First-line indent**: `text-indent: 36pt` for `.body-line` and `.memo-closing`
+- **Margins**: 25mm top, 25mm right, 20mm bottom, 30mm left (กั้นหน้า 3 ซม. กั้นหลัง 2 ซม.)
+- **First-line indent**: `text-indent: 72pt` (≈ 2.5 ซม. = 2 Tab ตามระเบียบ) for `.body-line` and `.memo-closing`
 - **เรียน multi-line**: use `.memo-recipient` (flex) + `.memo-recipient-list`; all lines align with first recipient
 - **Preview scale**: `.memo-page-preview` uses `transform: scale(0.66)` — disabled in `@media print`
+- **บันทึกข้อความ ไม่มีคำลงท้าย** (ขอแสดงความนับถือ ฯลฯ) — มีเฉพาะ "ภาคสรุป" (จึงเรียนมาเพื่อ...)
+- **โครงสร้างเนื้อหา**: ๑. เรื่องเดิม (ภาคเหตุ) ๒. ข้อเท็จจริง ๓. ข้อพิจารณา (ภาคสรุป)
 
 ## AI Integration (Claude CLI)
 - `lib/claude.ts` calls `spawn('claude', ['-p', '--output-format', 'json'])` — prompt goes to stdin, JSON result from stdout

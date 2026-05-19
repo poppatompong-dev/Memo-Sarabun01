@@ -17,11 +17,11 @@
 
   /* TYPOGRAPHY */
   --memo-body-size:   16pt;
-  --memo-title-size:  29pt;
+  --memo-title-size:  30pt;  /* ระเบียบ: 30-33pt bold */
   --memo-line-height: 1.5;
 
   /* HEADER */
-  --memo-garuda-size:    24mm;
+  --memo-garuda-size:    15mm;  /* ระเบียบ: ครุฑ 1.5 ซม. สำหรับบันทึกข้อความ */
   --memo-header-gap:     6pt;     /* gap below garuda+title row */
   --memo-row-gap:        6pt;     /* between meta rows */
   --memo-dotted-pad-bot: 0pt;     /* gap between text and dotted line */
@@ -39,7 +39,7 @@
   /* BODY */
   --memo-body-top:       6pt;
   --memo-section-gap:    8pt;
-  --memo-line-indent:    36pt;    /* first-line indent (ระเบียบ ≈ 720 twips) */
+  --memo-line-indent:    72pt;    /* first-line indent 2 Tab = 2.5 ซม. ≈ 71pt */
 
   /* FOOTER */
   --memo-footer-top:    12pt;
