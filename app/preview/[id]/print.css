@@ -25,7 +25,7 @@
   --memo-header-gap:     6pt;     /* gap below garuda+title row */
   --memo-row-gap:        6pt;     /* between meta rows */
   --memo-dotted-pad-bot: 0pt;     /* gap between text and dotted line */
-  --memo-row-line-height: 1.15;   /* tightness of dotted-line rows */
+  --memo-row-line-height: 1.05;   /* tightness of dotted-line rows (ชิด: 1.0 / safe: 1.15) */
 
   /* DIVIDER (under เรื่อง) */
   --memo-divider-top:    6pt;
@@ -112,10 +112,12 @@
   flex: 1;
   border-bottom: 1px dotted #000;
   padding: 0 4pt var(--memo-dotted-pad-bot);
-  min-height: 1.1em;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  min-height: 1.05em;
+  /* รองรับเนื้อหายาว: wrap ขึ้นบรรทัดใหม่อัตโนมัติ
+     เส้นประจะอยู่ใต้บรรทัดสุดท้าย (เหมือนพฤติกรรมใน Word) */
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .meta-value-dotted.meta-half {
