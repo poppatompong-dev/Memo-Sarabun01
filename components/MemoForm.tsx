@@ -62,6 +62,22 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const [error, setError] = useState('')
   const [aiMeta, setAiMeta] = useState<{model: string; input_tokens: number; output_tokens: number} | null>(null)
   const [showGuide, setShowGuide] = useState(false)
+  const [customDept, setCustomDept] = useState(false)
+
+  const clearSection = (keys: (keyof FormState)[]) => {
+    setForm(f => {
+      const next = { ...f }
+      for (const k of keys) next[k] = (k === 'doc_date' ? new Date().toISOString().split('T')[0] : '') as never
+      return next
+    })
+  }
+  const clearAll = () => {
+    if (!confirm('ล้างเนื้อหาทั้งหมดของบันทึกข้อความ?')) return
+    setForm({ ...EMPTY_FORM, doc_date: new Date().toISOString().split('T')[0] })
+    setRecipients([''])
+    setAiMeta(null)
+    setPolishDone(false)
+  }
 
   useEffect(() => {
     const dept = departments.find(d => d.name === form.department)
@@ -294,16 +310,33 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       <section className="section-card">
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">01</span>
-          <h2 className="section-title">ส่วนหัวบันทึกข้อความ</h2>
+          <h2 className="section-title flex-1">ส่วนหัวบันทึกข้อความ</h2>
+          <button type="button"
+            onClick={() => { clearSection(['department','division','doc_number','doc_date','subject']); setRecipients(['']); setCustomDept(false) }}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+            title="ล้างเฉพาะส่วนนี้">🗑 ล้าง</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="label">ส่วนราชการ (กอง / สำนัก)</label>
-            <select className="input" value={form.department} onChange={set('department')}>
-              <option value="">-- เลือกกอง --</option>
-              {departments.map(d => <option key={d.name}>{d.name}</option>)}
-            </select>
-            {dept && (
+            <div className="flex items-center justify-between">
+              <label className="label">ส่วนราชการ (กอง / สำนัก)</label>
+              <button type="button" onClick={() => setCustomDept(v => !v)}
+                className="text-xs font-medium transition-colors"
+                style={{ color: customDept ? 'var(--blue)' : 'var(--text-300)' }}>
+                {customDept ? '↻ ใช้รายการ' : '✎ พิมพ์เอง'}
+              </button>
+            </div>
+            {customDept ? (
+              <input className="input" value={form.department} onChange={set('department')}
+                placeholder="ระบุชื่อกอง/สำนักของหน่วยงานท่าน" />
+            ) : (
+              <select className="input" value={form.department} onChange={set('department')}>
+                <option value="">-- เลือกกอง --</option>
+                {departments.map(d => <option key={d.name}>{d.name}</option>)}
+              </select>
+            )}
+            {dept && !customDept && (
               <p className="text-sm mt-1 font-mono" style={{ color: 'var(--text-300)' }}>
                 {fullCode || dept.code}
               </p>
@@ -311,10 +344,15 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           </div>
           <div>
             <label className="label">กลุ่มงาน / ฝ่าย</label>
-            <select className="input" value={form.division} onChange={set('division')} disabled={!divisions.length}>
-              <option value="">-- เลือกกลุ่มงาน --</option>
-              {divisions.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
-            </select>
+            {customDept ? (
+              <input className="input" value={form.division} onChange={set('division')}
+                placeholder="ระบุชื่อกลุ่มงาน/ฝ่าย" />
+            ) : (
+              <select className="input" value={form.division} onChange={set('division')} disabled={!divisions.length}>
+                <option value="">-- เลือกกลุ่มงาน --</option>
+                {divisions.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <label className="label">เลขที่หนังสือ</label>
@@ -399,6 +437,11 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           <div className="flex items-center gap-3">
             <span className="step-badge">02</span>
             <h2 className="section-title flex-1" style={{ color: '#1E3A8A' }}>ให้ AI ช่วยร่างเนื้อหา</h2>
+            <button type="button"
+              onClick={() => { clearSection(['ai_context']); setAiMeta(null) }}
+              className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              style={{ border: '1.5px solid #BFDBFE', background: 'white', color: '#DC2626' }}
+              title="ล้างบริบท">🗑 ล้าง</button>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>ไม่บังคับ</span>
             <button onClick={() => setShowGuide(v => !v)}
               className="flex items-center gap-1.5 text-sm font-medium transition-colors"
@@ -460,6 +503,11 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">03</span>
           <h2 className="section-title flex-1">เนื้อหาบันทึกข้อความ</h2>
+          <button type="button"
+            onClick={() => { clearSection(['content_background','content_facts','content_consideration']); setPolishDone(false) }}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+            title="ล้างเนื้อหาทั้ง 3 ส่วน">🗑 ล้าง</button>
           <div className="relative group">
             <button
               onClick={polishMemo}
@@ -516,7 +564,12 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       <section className="section-card">
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">04</span>
-          <h2 className="section-title">ลงนาม</h2>
+          <h2 className="section-title flex-1">ลงนาม</h2>
+          <button type="button"
+            onClick={() => clearSection(['signatory_name','signatory_title','closing'])}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+            title="ล้างผู้ลงนาม + คำลงท้าย">🗑 ล้าง</button>
         </div>
 
         {/* คำลงท้าย */}
@@ -622,6 +675,11 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         <button onClick={save} disabled={saving || !form.subject}
           className="btn-primary sm:flex-1 w-full sm:w-auto justify-center">
           {saving ? 'กำลังบันทึก...' : 'บันทึกและดูตัวอย่าง →'}
+        </button>
+        <button onClick={clearAll} type="button"
+          className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          style={{ border: '1.5px solid #FECACA', background: '#FEF2F2', color: '#DC2626' }}>
+          🗑 ล้างทั้งหมด
         </button>
         <button onClick={() => router.push('/')} className="btn-secondary w-full sm:w-auto justify-center">ยกเลิก</button>
       </div>

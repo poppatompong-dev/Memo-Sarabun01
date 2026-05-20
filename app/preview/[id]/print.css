@@ -139,6 +139,8 @@
   gap: 6pt;
   margin-top: var(--memo-recipient-gap-top);
   margin-bottom: var(--memo-recipient-gap-bottom);
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .memo-recipient-list {
@@ -156,6 +158,9 @@
 
 .memo-section {
   margin-bottom: var(--memo-section-gap);
+  /* รองรับบันทึกข้อความที่เนื้อหายาวขึ้นหน้าใหม่ — ป้องกันการตัดกลางย่อหน้า */
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .section-heading {
@@ -174,6 +179,9 @@
   margin: 0;
   text-justify: inter-character;
   word-break: break-word;
+  /* บรรทัดเดี่ยวบนสุด/ล่างสุดของหน้า: บังคับให้มีอย่างน้อย 2 บรรทัดในเศษหน้า */
+  orphans: 2;
+  widows: 2;
 }
 
 .body-blank {
@@ -196,6 +204,9 @@
 .memo-signature {
   text-align: center;
   margin-top: var(--memo-sig-gap);
+  /* บล็อกลายเซ็นห้ามถูกตัดข้ามหน้า */
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .sig-line { margin: 0; }
@@ -236,17 +247,21 @@
     background: #fff !important;
   }
 
+  /* ใช้ @page กำหนด margin จริงของกระดาษ (ทำให้หน้า 2+ มี margin เหมือนหน้าแรกอัตโนมัติ)
+     และเอา padding ของ .memo-page ออก เพื่อไม่ให้ margin ซ้อนกัน */
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 25mm 25mm 20mm 30mm;
   }
 
   .memo-page {
-    width: 210mm;
-    min-height: 297mm;
+    width: auto;
+    min-height: 0;
+    padding: 0;
     box-shadow: none;
     margin: 0;
-    page-break-after: always;
+    /* ไม่ใช้ page-break-after เพื่อให้บันทึกข้อความยาวสามารถไหลข้ามหน้าได้อย่างเป็นธรรมชาติ */
+    page-break-after: auto;
     font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif !important;
     color: #000 !important;
   }
