@@ -54,3 +54,6 @@ Thumbs.db
 
 # Claude built-in skill bundle (docx skill ships ~1.3MB of OOXML schemas; not part of app code)
 /.agents/skills/docx/
+
+# OCR output (regenerated on demand from templates/*.pdf — large + machine-output)
+/templates/*.txt

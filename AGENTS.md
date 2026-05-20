@@ -41,18 +41,25 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Signatories table is seeded from `data/signatories.json` if empty on first getDb() call
 
 ## MemoSheet Template Rules
-The A4 preview must match the Thai government standard 100%:
-- **Font**: TH SarabunIT9 16pt (`font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif`) — ระเบียบกำหนด TH SarabunIT9
-- **Title**: "บันทึกข้อความ" — 30pt bold, centered in grid (garuda left, title center, blank right); ระเบียบ: 30-33pt
-- **Garuda**: `<img class="memo-garuda" src="/garuda.png">` — **15mm** wide (1.5 ซม. ตามระเบียบสำหรับบันทึกข้อความ); หนังสือภายนอกใช้ 3 ซม.
+The A4 preview must match the Thai government standard 100%.
+**ทุกค่า audit แล้วเทียบกับ `templates/แบบบันทึกข้อความ.doc` + เอกสารอ้างอิง 4 ฉบับ — ดูรายละเอียดใน [SPEC.md](SPEC.md)**
+
+- **Font**: TH SarabunIT9 16pt (`font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif`) — ฟอนต์ใน .doc จริงคือ `TH SarabunIT๙` (มี ๙ เป็นเลขไทย)
+- **Title "บันทึกข้อความ"**: **29pt** (ไม่ bold, ใช้ Heading 1 style) — TEMPLATE + PDF 1 ยืนยัน
+- **Garuda**: 15mm (1.5 ซม. สำหรับบันทึกข้อความ — หนังสือภายนอกใช้ 3 ซม.)
+- **Labels (ส่วนราชการ/ที่/วันที่/เรื่อง)**: **20pt bold** — TEMPLATE + PDF 1 (PDF 3 บอก 16pt — เชื่อ TEMPLATE)
+- **"เรียน" label**: **16.5pt bold** — TEMPLATE
 - **Meta rows**: each value uses `.meta-value-dotted` (`border-bottom: 1px dotted #000`) filling remaining width
-- **"ที่" + "วันที่"** on same row — "ที่" value uses `meta-half` (flex 0 0 38%), "วันที่" value fills rest
-- **Margins**: 25mm top, 25mm right, 20mm bottom, 30mm left (กั้นหน้า 3 ซม. กั้นหลัง 2 ซม.)
-- **First-line indent**: `text-indent: 72pt` (≈ 2.5 ซม. = 2 Tab ตามระเบียบ) for `.body-line` and `.memo-closing`
-- **เรียน multi-line**: use `.memo-recipient` (flex) + `.memo-recipient-list`; all lines align with first recipient
-- **Preview scale**: `.memo-page-preview` uses `transform: scale(0.66)` — disabled in `@media print`
+- **"ที่" + "วันที่"** on same row — "ที่" value uses `meta-half` (flex 0 0 38%)
+- **Margins (ตรวจจาก TEMPLATE)**: top 22.5mm, right 20mm, bottom 4mm, left 30mm
+- **First-line indent**: 72pt (≈ 2.5 ซม. = 2 Tab ตามระเบียบ + TEMPLATE)
+- **Section gaps**: ก่อน "เรื่องเดิม" (section แรก) 12pt; ก่อน "ข้อเท็จจริง"/"ข้อพิจารณา" 6pt — ตาม TEMPLATE
+- **Closing gap (ก่อนลายเซ็น)**: 72pt = 3 บรรทัด (4 Enter) ตาม PDF 1
+- **เรียน multi-line**: use `.memo-recipient` (flex) + `.memo-recipient-list`; all lines align
+- **Preview scale**: `.memo-page-preview` ใช้ scaling จาก `NewMemoEditor.tsx` (inline style) — disabled in `@media print`
 - **บันทึกข้อความ ไม่มีคำลงท้าย** (ขอแสดงความนับถือ ฯลฯ) — มีเฉพาะ "ภาคสรุป" (จึงเรียนมาเพื่อ...)
 - **โครงสร้างเนื้อหา**: ๑. เรื่องเดิม (ภาคเหตุ) ๒. ข้อเท็จจริง ๓. ข้อพิจารณา (ภาคสรุป)
+- **Multi-page support**: `page-break-inside: avoid` บน `.memo-section`/`.memo-signature`/`.memo-recipient`; `@page` margin จัดการ margin หน้า 2+ อัตโนมัติ
 
 ## AI Integration (Claude CLI)
 - `lib/claude.ts` calls `spawn('claude', ['-p', '--output-format', 'json'])` — prompt goes to stdin, JSON result from stdout

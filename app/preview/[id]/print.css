@@ -9,23 +9,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
 
 :root {
-  /* PAGE MARGINS (top right bottom left) */
-  --memo-pad-top:    25mm;
-  --memo-pad-right:  25mm;
-  --memo-pad-bottom: 20mm;
-  --memo-pad-left:   30mm;
+  /* PAGE MARGINS — ตรวจจริงจาก templates/แบบบันทึกข้อความ.doc (ดู SPEC.md) */
+  --memo-pad-top:    22.5mm;  /* TEMPLATE: 22.51mm */
+  --memo-pad-right:  20mm;    /* TEMPLATE + ระเบียบกั้นหลัง 2 ซม. */
+  --memo-pad-bottom: 4mm;     /* TEMPLATE: 3.99mm */
+  --memo-pad-left:   30mm;    /* TEMPLATE + ระเบียบกั้นหน้า 3 ซม. */
 
   /* TYPOGRAPHY */
   --memo-body-size:   16pt;
-  --memo-title-size:  30pt;  /* ระเบียบ: 30-33pt bold */
+  --memo-title-size:  29pt;   /* TEMPLATE + PDF 1: "บันทึกข้อความ" 29pt */
+  --memo-label-size:  20pt;   /* TEMPLATE + PDF 1: labels ส่วนราชการ/ที่/วันที่/เรื่อง 20pt bold */
+  --memo-recipient-label-size: 16.5pt; /* TEMPLATE: "เรียน" 16.5pt bold */
   --memo-line-height: 1.5;
 
   /* HEADER */
-  --memo-garuda-size:    15mm;  /* ระเบียบ: ครุฑ 1.5 ซม. สำหรับบันทึกข้อความ */
-  --memo-header-gap:     6pt;     /* gap below garuda+title row */
-  --memo-row-gap:        6pt;     /* between meta rows */
-  --memo-dotted-pad-bot: 0pt;     /* gap between text and dotted line */
-  --memo-row-line-height: 1.05;   /* tightness of dotted-line rows (ชิด: 1.0 / safe: 1.15) */
+  --memo-garuda-size:    15mm;  /* TEMPLATE + PDF 1 + PDF 3: 1.5 ซม. */
+  --memo-header-gap:     6pt;
+  --memo-row-gap:        6pt;
+  --memo-dotted-pad-bot: 0pt;
+  --memo-row-line-height: 1.05;
 
   /* DIVIDER (under เรื่อง) */
   --memo-divider-top:    6pt;
@@ -37,14 +39,15 @@
   --memo-recipient-list-line:  1.4;
 
   /* BODY */
-  --memo-body-top:       6pt;
-  --memo-section-gap:    8pt;
-  --memo-line-indent:    72pt;    /* first-line indent 2 Tab = 2.5 ซม. ≈ 71pt */
+  --memo-body-top:        6pt;
+  --memo-section-gap:     6pt;   /* PDF 1: "1 Enter + Before 6pt" */
+  --memo-first-section-gap: 12pt; /* TEMPLATE: ก่อน "เรื่องเดิม" ใช้ before=12pt */
+  --memo-line-indent:     72pt;  /* TEMPLATE + ระเบียบ: 2 Tab = 2.5 ซม. */
 
   /* FOOTER */
   --memo-footer-top:    12pt;
-  --memo-closing-gap:   24pt;     /* gap below "จึงเรียนมาเพื่อ..." */
-  --memo-sig-gap:        0pt;     /* gap from closing to signature block */
+  --memo-closing-gap:   72pt;    /* PDF 1: "3 บรรทัด (4 Enter)" ก่อนลายเซ็น */
+  --memo-sig-gap:        0pt;
 }
 
 /* ==============================
@@ -104,8 +107,14 @@
 
 .meta-label {
   font-weight: 700;
+  font-size: var(--memo-label-size); /* TEMPLATE: 20pt bold */
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* "เรียน" ใช้ขนาดเฉพาะ 16.5pt bold ตาม TEMPLATE */
+.memo-recipient .meta-label {
+  font-size: var(--memo-recipient-label-size);
 }
 
 .meta-value-dotted {
@@ -154,6 +163,12 @@
    ============================== */
 .memo-body {
   margin-top: var(--memo-body-top);
+}
+
+/* TEMPLATE: ก่อน "เรื่องเดิม" (section แรก) ใช้ before=12pt
+   ก่อน "ข้อเท็จจริง"/"ข้อพิจารณา" ใช้ before=6pt */
+.memo-body > .memo-section:first-child > .section-heading {
+  margin-top: calc(var(--memo-first-section-gap) - var(--memo-section-gap));
 }
 
 .memo-section {
