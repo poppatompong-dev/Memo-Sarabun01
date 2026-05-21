@@ -19,9 +19,55 @@ body {
   font-family: var(--font-sarabun), 'Sarabun', 'Noto Sans Thai', sans-serif;
   font-size: 18px;
   line-height: 1.75;
-  background: var(--surface);
+  background:
+    radial-gradient(ellipse 800px 600px at 100% 0%, color-mix(in srgb, var(--blue) 4%, transparent), transparent 70%),
+    radial-gradient(ellipse 600px 800px at 0% 100%, color-mix(in srgb, var(--gold) 3%, transparent), transparent 70%),
+    var(--surface);
+  background-attachment: fixed;
   color: var(--text-900);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ── Watermark ──────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url('/garuda.png');
+  background-repeat: no-repeat;
+  background-position: calc(100% - 40px) calc(100% - 40px);
+  background-size: 240px;
+  opacity: 0.045;
+  filter: grayscale(100%);
+}
+
+body::after {
+  content: 'เทศบาลนครนครสวรรค์ · NAKHON SAWAN MUNICIPALITY';
+  position: fixed;
+  bottom: 50%;
+  right: -120px;
+  transform: rotate(-90deg);
+  transform-origin: center right;
+  font-family: var(--font-sarabun), sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 6px;
+  color: var(--text-300);
+  opacity: 0.25;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+}
+
+/* keep content above watermarks */
+body > * { position: relative; z-index: 1; }
+
+@media print {
+  body::before, body::after { display: none !important; }
 }
 
 /* ── Form utilities ─────────────────────────────── */

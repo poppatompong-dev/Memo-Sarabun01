@@ -1,19 +1,47 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MemoForm, { EMPTY_FORM, type FormState } from './MemoForm'
 import MemoSheet, { type MemoSheetData } from './MemoSheet'
 import SpacingPanel from './SpacingPanel'
 
+const A4_W_PX = 210 * (96 / 25.4)  // ≈ 793.7
+const A4_H_PX = 297 * (96 / 25.4)  // ≈ 1122.5
+
 const MIN_SCALE = 0.3
 const MAX_SCALE = 1.5
-const DEFAULT_SCALE = 0.66
 
 export default function NewMemoEditor() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [recipients, setRecipients] = useState<string[]>(['นายกเทศมนตรีนครนครสวรรค์'])
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [showSpacing, setShowSpacing] = useState(false)
-  const [scale, setScale] = useState(DEFAULT_SCALE)
+  const [showRulers, setShowRulers] = useState(false)
+
+  // Auto-fit + manual zoom state
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [fitScale, setFitScale] = useState(0.66)
+  const [manualScale, setManualScale] = useState<number | null>(null) // null = auto-fit
+  const scale = manualScale ?? fitScale
+
+  // ResizeObserver: compute optimal fit-to-container scale
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const compute = () => {
+      const pad = 24 // container padding
+      const w = el.clientWidth - pad
+      const h = el.clientHeight - pad
+      if (w <= 0 || h <= 0) return
+      const sW = w / A4_W_PX
+      const sH = h / A4_H_PX
+      const s = Math.min(sW, sH, MAX_SCALE)
+      setFitScale(Math.max(MIN_SCALE, +s.toFixed(3)))
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const memo: MemoSheetData = {
     doc_number: form.doc_number,
@@ -30,23 +58,23 @@ export default function NewMemoEditor() {
     doc_date: form.doc_date,
   }
 
-  const zoomOut = () => setScale(s => Math.max(MIN_SCALE, +(s - 0.1).toFixed(2)))
-  const zoomIn  = () => setScale(s => Math.min(MAX_SCALE, +(s + 0.1).toFixed(2)))
-  const resetZoom = () => setScale(DEFAULT_SCALE)
+  const zoomOut = () => setManualScale(s => Math.max(MIN_SCALE, +(((s ?? fitScale) - 0.1)).toFixed(2)))
+  const zoomIn = () => setManualScale(s => Math.min(MAX_SCALE, +(((s ?? fitScale) + 0.1)).toFixed(2)))
+  const fitToContainer = () => setManualScale(null)
 
   return (
     <>
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_560px] gap-6">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,640px)] gap-6">
         {/* LEFT — form */}
         <div className="min-w-0">
           <MemoForm form={form} setForm={setForm} recipients={recipients} setRecipients={setRecipients} />
         </div>
 
-        {/* RIGHT — realtime preview (desktop only) */}
+        {/* RIGHT — realtime preview (desktop only, full-height fit) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-24">
+          <div className="sticky top-24 flex flex-col" style={{ height: 'calc(100vh - 7rem)' }}>
             {/* Toolbar */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-3 shrink-0">
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                 style={{ background: '#E0F2FE', color: '#0369A1' }}>
                 LIVE
@@ -54,21 +82,36 @@ export default function NewMemoEditor() {
               <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-600)' }}>
                 ตัวอย่างเอกสาร
               </span>
+              <button onClick={() => setShowRulers(v => !v)}
+                className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
+                style={{
+                  border: '1px solid var(--border)',
+                  background: showRulers ? '#DBEAFE' : 'var(--card)',
+                  color: showRulers ? '#1D4ED8' : 'var(--text-600)',
+                }}
+                title="แสดง/ซ่อนเส้นวัดระยะขอบและจุดสำคัญ">
+                📏 {showRulers ? 'ซ่อน' : 'แสดง'}เส้นวัด
+              </button>
               <button onClick={() => setShowSpacing(true)}
                 className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/5"
                 style={{ border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text-600)' }}
                 title="ปรับระยะห่างเอกสาร">
                 📐 ระยะ
               </button>
-              <ZoomControls scale={scale} onIn={zoomIn} onOut={zoomOut} onReset={resetZoom} />
+              <ZoomControls
+                scale={scale}
+                fitMode={manualScale === null}
+                onIn={zoomIn} onOut={zoomOut} onFit={fitToContainer}
+              />
             </div>
 
-            {/* Scrollable preview container */}
-            <div className="rounded-lg overflow-auto"
-              style={{ height: '760px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <div className="p-4 inline-block">
-                <ScaledSheet memo={memo} scale={scale} />
-              </div>
+            {/* Scrollable preview container — fills remaining height */}
+            <div
+              ref={containerRef}
+              className="rounded-lg flex items-start justify-center overflow-hidden flex-1"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '12px' }}
+            >
+              <ScaledSheet memo={memo} scale={scale} showRulers={showRulers} />
             </div>
           </div>
         </aside>
@@ -88,7 +131,6 @@ export default function NewMemoEditor() {
         ดูตัวอย่าง
       </button>
 
-      {/* Spacing panel (slide-in from right) */}
       <SpacingPanel open={showSpacing} onClose={() => setShowSpacing(false)} />
 
       {/* MOBILE — full-screen preview modal */}
@@ -98,7 +140,12 @@ export default function NewMemoEditor() {
             style={{ background: 'var(--navy-800)', color: '#fff' }}>
             <span className="font-semibold">ตัวอย่างเอกสาร</span>
             <div className="flex items-center gap-2">
-              <ZoomControls scale={scale} onIn={zoomIn} onOut={zoomOut} onReset={resetZoom} dark />
+              <button onClick={() => setShowRulers(v => !v)}
+                className="rounded-lg px-2.5 py-1 text-xs"
+                style={{ background: showRulers ? '#3B82F6' : 'rgba(255,255,255,0.1)' }}>
+                📏
+              </button>
+              <ZoomControls scale={scale} fitMode={manualScale === null} onIn={zoomIn} onOut={zoomOut} onFit={fitToContainer} dark />
               <button onClick={() => setShowMobilePreview(false)}
                 className="rounded-lg px-3 py-1.5 text-sm"
                 style={{ background: 'rgba(255,255,255,0.1)' }}>
@@ -106,10 +153,8 @@ export default function NewMemoEditor() {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto">
-            <div className="p-4 inline-block">
-              <ScaledSheet memo={memo} scale={scale} />
-            </div>
+          <div className="flex-1 overflow-auto flex items-start justify-center p-4">
+            <ScaledSheet memo={memo} scale={scale} showRulers={showRulers} />
           </div>
         </div>
       )}
@@ -117,7 +162,7 @@ export default function NewMemoEditor() {
   )
 }
 
-function ScaledSheet({ memo, scale }: { memo: MemoSheetData; scale: number }) {
+function ScaledSheet({ memo, scale, showRulers }: { memo: MemoSheetData; scale: number; showRulers: boolean }) {
   return (
     <div style={{
       width: `calc(210mm * ${scale})`,
@@ -131,19 +176,22 @@ function ScaledSheet({ memo, scale }: { memo: MemoSheetData; scale: number }) {
         position: 'absolute',
         inset: 0,
       }}>
-        <MemoSheet memo={memo} preview />
+        <div className={showRulers ? 'memo-page-with-rulers' : undefined}>
+          <MemoSheet memo={memo} preview />
+        </div>
       </div>
     </div>
   )
 }
 
 function ZoomControls({
-  scale, onIn, onOut, onReset, dark = false,
+  scale, fitMode, onIn, onOut, onFit, dark = false,
 }: {
   scale: number
+  fitMode: boolean
   onIn: () => void
   onOut: () => void
-  onReset: () => void
+  onFit: () => void
   dark?: boolean
 }) {
   const bg = dark ? 'rgba(255,255,255,0.1)' : 'var(--card)'
@@ -155,10 +203,17 @@ function ZoomControls({
         className="px-2.5 py-1 text-base font-semibold transition-colors disabled:opacity-40 hover:bg-black/5"
         style={{ color: text }}
         title="ย่อ">−</button>
-      <button type="button" onClick={onReset}
-        className="px-2 py-1 text-xs font-mono min-w-[44px] transition-colors hover:bg-black/5"
-        style={{ color: text, borderLeft: `1px solid ${border}`, borderRight: `1px solid ${border}` }}
-        title="รีเซ็ตเป็น 66%">{Math.round(scale * 100)}%</button>
+      <button type="button" onClick={onFit}
+        className="px-2 py-1 text-xs font-mono min-w-[58px] transition-colors hover:bg-black/5"
+        style={{
+          color: fitMode ? (dark ? '#7DD3FC' : 'var(--blue)') : text,
+          borderLeft: `1px solid ${border}`,
+          borderRight: `1px solid ${border}`,
+          fontWeight: fitMode ? 700 : 400,
+        }}
+        title="พอดีหน้าจอ">
+        {fitMode ? '⤢ ' : ''}{Math.round(scale * 100)}%
+      </button>
       <button type="button" onClick={onIn} disabled={scale >= MAX_SCALE}
         className="px-2.5 py-1 text-base font-semibold transition-colors disabled:opacity-40 hover:bg-black/5"
         style={{ color: text }}

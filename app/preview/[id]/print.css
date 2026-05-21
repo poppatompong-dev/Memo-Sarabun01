@@ -36,7 +36,7 @@
   /* RECIPIENT */
   --memo-recipient-gap-top:    4pt;
   --memo-recipient-gap-bottom: 4pt;
-  --memo-recipient-list-line:  1.4;
+  --memo-recipient-list-line:  1.15; /* single-spacing (Word "single" ≈ 1.15×) — ลด spacing ระหว่างบรรทัดผู้รับหลายคน */
 
   /* BODY */
   --memo-body-top:        6pt;
@@ -235,6 +235,56 @@
 
 .memo-page-preview {
   box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+
+/* ==============================
+   RULERS OVERLAY (screen only — preview measurement guides)
+   ============================== */
+.memo-page-with-rulers {
+  position: relative;
+}
+
+/* Content-area dashed box (shows the printable area inside the margins) */
+.memo-page-with-rulers > .memo-page::before {
+  content: '';
+  position: absolute;
+  top: var(--memo-pad-top);
+  right: var(--memo-pad-right);
+  bottom: var(--memo-pad-bottom);
+  left: var(--memo-pad-left);
+  border: 1px dashed rgba(59, 130, 246, 0.55);
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Margin labels (shown at top + left of page) */
+.memo-page-with-rulers > .memo-page::after {
+  content: '↑ บน 22.5mm  →ขวา 20mm  ↓ ล่าง 4mm  ←ซ้าย 30mm';
+  position: absolute;
+  top: 4pt;
+  left: 4pt;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 8pt;
+  color: rgba(29, 78, 216, 0.85);
+  background: rgba(219, 234, 254, 0.9);
+  padding: 2pt 6pt;
+  border-radius: 4pt;
+  border: 1px solid rgba(147, 197, 253, 0.8);
+  pointer-events: none;
+  z-index: 51;
+  letter-spacing: 0.5pt;
+}
+
+/* Subtle outline on recipient block to visualize spacing */
+.memo-page-with-rulers .memo-recipient {
+  outline: 1px dotted rgba(34, 197, 94, 0.5);
+  outline-offset: 2pt;
+}
+
+/* Subtle outline on memo-section blocks */
+.memo-page-with-rulers .memo-section {
+  outline: 1px dotted rgba(168, 85, 247, 0.4);
+  outline-offset: 1pt;
 }
 
 /* ==============================

@@ -42,6 +42,7 @@
 
 | Variable | ค่า | แหล่งอ้างอิง |
 |---|---|---|
+| `--memo-recipient-list-line` (line-height ของรายชื่อผู้รับ) | **1.15** (single spacing) | ระเบียบ: list ใช้ single spacing ≈ 1.15× font |
 | `--memo-garuda-size` | **15mm** (1.5 ซม.) | TEMPLATE + PDF 1 + PDF 3 |
 | `--memo-header-gap` | 6pt | PDF 1 "1 Enter + Before 6pt" |
 | `--memo-row-gap` | 6pt | PDF 1 |

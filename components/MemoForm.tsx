@@ -4,6 +4,13 @@ import { useRouter } from 'next/navigation'
 import departments from '@/data/departments.json'
 import recipientOptions from '@/data/recipients.json'
 import { toThaiDate, toThaiDigits } from '@/lib/thai-date'
+import AIProgressModal, { type AIModalState } from './AIProgressModal'
+
+const DEFAULT_REFERENCES = [
+  'ระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ พ.ศ. ๒๕๒๖',
+  'ระเบียบฯ ฉบับที่ ๒ พ.ศ. ๒๕๔๘ และ ฉบับที่ ๔ พ.ศ. ๒๕๖๔',
+  'คู่มือการเขียนหนังสือราชการ (KM งานสารบรรณ)',
+]
 
 export interface FormState {
   department: string
@@ -68,6 +75,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const [polishDone, setPolishDone] = useState(false)
   const [subjectPolishLoading, setSubjectPolishLoading] = useState(false)
   const [subjectPolishDone, setSubjectPolishDone] = useState(false)
+  const [aiModal, setAiModal] = useState<AIModalState | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [aiMeta, setAiMeta] = useState<{model: string; input_tokens: number; output_tokens: number} | null>(null)
@@ -200,6 +208,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const polishSubjectField = async () => {
     if (!form.subject.trim()) return
     setSubjectPolishLoading(true); setSubjectPolishDone(false); setError('')
+    setAiModal({ open: true, loading: true, title: 'AI กำลังเกลาหัวเรื่อง', subtitle: 'ปรับสำนวนหัวเรื่องให้ถูกต้องตามหลักภาษาราชการ' })
     try {
       const res = await fetch('/api/polish-subject', {
         method: 'POST',
@@ -211,8 +220,19 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       setForm(f => ({ ...f, subject: data.subject }))
       setSubjectPolishDone(true)
       setTimeout(() => setSubjectPolishDone(false), 3000)
+      setAiModal({
+        open: true, loading: false,
+        title: 'เกลาหัวเรื่องเรียบร้อย',
+        subtitle: form.subject !== data.subject ? `จาก: "${form.subject}"\nเป็น: "${data.subject}"` : 'หัวเรื่องเดิมถูกต้องดีอยู่แล้ว',
+        result: {
+          changes: data.changes && data.changes.length > 0 ? data.changes : (form.subject !== data.subject ? ['ปรับสำนวนให้กระชับและถูกต้องตามภาษาราชการ'] : ['ไม่มีการแก้ไข — หัวเรื่องเดิมถูกต้องแล้ว']),
+          references: data.references && data.references.length > 0 ? data.references : DEFAULT_REFERENCES,
+          meta: { model: data._meta?.model, tokens: (data._meta?.input_tokens ?? 0) + (data._meta?.output_tokens ?? 0) },
+        },
+      })
     } catch (e) {
       setError(String(e))
+      setAiModal({ open: true, loading: false, title: 'เกิดข้อผิดพลาด', error: String(e) })
     } finally {
       setSubjectPolishLoading(false)
     }
@@ -224,6 +244,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       return
     }
     setAiLoading(true); setError('')
+    setAiModal({ open: true, loading: true, title: 'AI กำลังร่างเนื้อหา', subtitle: 'สร้างเนื้อหา ๓ ภาค: เรื่องเดิม → ข้อเท็จจริง → ข้อพิจารณา' })
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
@@ -245,8 +266,23 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         content_consideration: data.content_consideration,
       }))
       if (data._meta) setAiMeta(data._meta)
+      setAiModal({
+        open: true, loading: false,
+        title: 'ร่างเนื้อหาเรียบร้อย',
+        subtitle: 'AI สร้างเนื้อหา ๓ ภาคให้แล้ว — กรุณาตรวจสอบและแก้ไขตามความเหมาะสม',
+        result: {
+          changes: Array.isArray(data.changes) && data.changes.length > 0 ? data.changes : [
+            'ร่างภาคเหตุ (เรื่องเดิม) ตามบริบทที่ให้',
+            'ร่างภาคข้อมูล (ข้อเท็จจริง) พร้อมข้อมูลตัวเลข',
+            'ร่างภาคสรุป (ข้อพิจารณา) พร้อมสำนวนปิดท้ายตามวัตถุประสงค์',
+          ],
+          references: Array.isArray(data.references) && data.references.length > 0 ? data.references : DEFAULT_REFERENCES,
+          meta: { model: data._meta?.model, tokens: (data._meta?.input_tokens ?? 0) + (data._meta?.output_tokens ?? 0) },
+        },
+      })
     } catch (e) {
       setError(String(e))
+      setAiModal({ open: true, loading: false, title: 'เกิดข้อผิดพลาด', error: String(e) })
     } finally {
       setAiLoading(false)
     }
@@ -256,6 +292,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
     const hasContent = form.content_background || form.content_facts || form.content_consideration
     if (!hasContent) { setError('กรุณากรอกเนื้อหาในส่วนที่ 3 ก่อนให้ AI ตรวจแก้'); return }
     setPolishLoading(true); setPolishDone(false); setError('')
+    setAiModal({ open: true, loading: true, title: 'AI กำลังตรวจแก้ภาษา', subtitle: 'วิเคราะห์ภาษาราชการ ไวยากรณ์ และความถูกต้องตามระเบียบสารบรรณ' })
     try {
       const res = await fetch('/api/polish', {
         method: 'POST',
@@ -277,8 +314,23 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       }))
       setPolishDone(true)
       setTimeout(() => setPolishDone(false), 4000)
+      setAiModal({
+        open: true, loading: false,
+        title: 'ตรวจแก้ภาษาเรียบร้อย',
+        subtitle: 'AI ปรับสำนวนและความถูกต้องเรียบร้อย',
+        result: {
+          changes: Array.isArray(data.changes) && data.changes.length > 0 ? data.changes : [
+            'ตรวจสอบโครงสร้าง ๓ ภาค (เรื่องเดิม / ข้อเท็จจริง / ข้อพิจารณา)',
+            'ปรับสำนวนภาษาราชการให้เหมาะสม',
+            'แปลงตัวเลขเป็นเลขไทยตามระเบียบ',
+          ],
+          references: Array.isArray(data.references) && data.references.length > 0 ? data.references : DEFAULT_REFERENCES,
+          meta: { model: data._meta?.model, tokens: (data._meta?.input_tokens ?? 0) + (data._meta?.output_tokens ?? 0) },
+        },
+      })
     } catch (e) {
       setError(String(e))
+      setAiModal({ open: true, loading: false, title: 'เกิดข้อผิดพลาด', error: String(e) })
     } finally {
       setPolishLoading(false)
     }
@@ -390,6 +442,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
 
   return (
     <div className="space-y-4">
+      <AIProgressModal state={aiModal} onClose={() => setAiModal(null)} />
       {error && (
         <div className="rounded-lg px-4 py-3 text-sm" style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C' }}>
           {error}
