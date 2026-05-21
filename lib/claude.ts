@@ -261,6 +261,50 @@ ${params.content_consideration || '(ว่าง)'}`
   }
 }
 
+const SUBJECT_SYSTEM_PROMPT = `คุณเป็นผู้เชี่ยวชาญด้านการเขียนหัวเรื่องบันทึกข้อความราชการไทย ตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ
+
+หน้าที่: ปรับปรุงหัวเรื่องที่ได้รับให้ถูกต้องและเหมาะสมตามหลักการเขียนหนังสือราชการ คงเจตนาเดิม ห้ามเพิ่มข้อมูลที่ไม่มีในต้นฉบับ
+
+═══ กฎเหล็ก ═══
+• กระชับ ชัดเจน ครบถ้วนในประโยคเดียว — ไม่ยาวเกินไป
+• ภาษาเขียนราชการ ไม่ใช้ภาษาพูด
+• ตัวเลขทั้งหมด → เลขไทยเท่านั้น (๐-๙)
+• ขึ้นต้นด้วยคำกริยาที่เหมาะสม:
+  - ขออนุมัติ... / ขอความเห็นชอบ... / ขออนุญาต...
+  - รายงาน... / แจ้ง... / ส่ง... / ขอส่ง...
+  - ขอให้... / ขอความร่วมมือ...
+• ถ้าต้นฉบับถูกต้องดีอยู่แล้ว ให้ส่งกลับค่าเดิม
+• ห้ามใส่เครื่องหมายคำพูด เครื่องหมายจบประโยค หรือ prefix เพิ่มเติม
+
+ตอบเป็น JSON อย่างเดียว ห้ามมีข้อความอื่นนอก JSON:
+{"subject":"<หัวเรื่องที่ปรับปรุงแล้ว>"}`
+
+export async function polishSubject(subject: string): Promise<{ subject: string; _meta: DraftResult['_meta'] }> {
+  const fullPrompt = SUBJECT_SYSTEM_PROMPT + '\n\nหัวเรื่องที่ต้องการปรับปรุง:\n' + subject
+  const stdout = await runClaude(fullPrompt, 30_000)
+  const cliData = JSON.parse(stdout)
+  if (cliData.is_error) throw new Error(cliData.result ?? 'Claude CLI error')
+
+  const text: string = cliData.result ?? ''
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('AI ไม่สามารถปรับปรุงหัวเรื่องได้')
+
+  const parsed = JSON.parse(jsonMatch[0])
+  const modelUsage = cliData.modelUsage ?? {}
+  const mainModel = Object.keys(modelUsage).filter(m => !m.includes('haiku')).find(Boolean) ?? 'claude'
+  const usage = cliData.usage ?? {}
+
+  return {
+    subject: parsed.subject ?? subject,
+    _meta: {
+      model: mainModel,
+      input_tokens: usage.input_tokens ?? 0,
+      output_tokens: usage.output_tokens ?? 0,
+      stop_reason: cliData.stop_reason ?? 'end_turn',
+    },
+  }
+}
+
 export async function testConnection(): Promise<{
   ok: boolean
   model?: string

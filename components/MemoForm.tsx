@@ -66,6 +66,8 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const [aiLoading, setAiLoading] = useState(false)
   const [polishLoading, setPolishLoading] = useState(false)
   const [polishDone, setPolishDone] = useState(false)
+  const [subjectPolishLoading, setSubjectPolishLoading] = useState(false)
+  const [subjectPolishDone, setSubjectPolishDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [aiMeta, setAiMeta] = useState<{model: string; input_tokens: number; output_tokens: number} | null>(null)
@@ -193,6 +195,27 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
     await fetch(`/api/closings/${c.id}`, { method: 'DELETE' })
     await loadClosings()
     setForm(f => ({ ...f, closing: 'จึงเรียนมาเพื่อโปรดพิจารณา' }))
+  }
+
+  const polishSubjectField = async () => {
+    if (!form.subject.trim()) return
+    setSubjectPolishLoading(true); setSubjectPolishDone(false); setError('')
+    try {
+      const res = await fetch('/api/polish-subject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: form.subject }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setForm(f => ({ ...f, subject: data.subject }))
+      setSubjectPolishDone(true)
+      setTimeout(() => setSubjectPolishDone(false), 3000)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setSubjectPolishLoading(false)
+    }
   }
 
   const aiDraft = async () => {
@@ -452,7 +475,27 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           </div>
           <div className="md:col-span-2">
             <label className="label">เรื่อง</label>
-            <input className="input" value={form.subject} onChange={set('subject')} placeholder="หัวเรื่องบันทึกข้อความ" />
+            <div className="flex gap-2">
+              <input className="input flex-1" value={form.subject} onChange={set('subject')} placeholder="หัวเรื่องบันทึกข้อความ" />
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={polishSubjectField}
+                  disabled={!form.subject.trim() || subjectPolishLoading}
+                  className="shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all disabled:opacity-40"
+                  style={{
+                    background: subjectPolishDone ? '#F0FDF4' : 'var(--surface)',
+                    border: `1px solid ${subjectPolishDone ? '#86EFAC' : 'var(--border)'}`,
+                    color: subjectPolishDone ? '#16A34A' : 'var(--text-600)',
+                  }}
+                >
+                  {subjectPolishLoading
+                    ? <span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                    : subjectPolishDone ? '✅' : '✨'}
+                </button>
+                <div className="tooltip-box tooltip-box-left">ให้ AI เกลาหัวเรื่องให้ถูกต้อง<br />ตามหลักภาษาราชการ</div>
+              </div>
+            </div>
           </div>
           <div className="md:col-span-2 space-y-2">
             <label className="label">เรียน</label>
