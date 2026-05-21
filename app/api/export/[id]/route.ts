@@ -4,7 +4,7 @@ import { generateDocx, isTemplateReady } from '@/lib/docx'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const memo = getMemoById(parseInt(id))
+  const memo = await getMemoById(parseInt(id))
   if (!memo) return NextResponse.json({ error: 'ไม่พบบันทึกข้อความ' }, { status: 404 })
 
   if (!isTemplateReady()) {

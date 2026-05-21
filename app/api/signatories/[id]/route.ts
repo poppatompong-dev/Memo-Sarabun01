@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (!body.name || !body.title) {
       return NextResponse.json({ error: 'กรุณาระบุชื่อและตำแหน่ง' }, { status: 400 })
     }
-    const sig = updateSignatory(parseInt(id), {
+    const sig = await updateSignatory(parseInt(id), {
       name: String(body.name).trim(),
       title: String(body.title).trim(),
     })
@@ -21,6 +21,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  deleteSignatory(parseInt(id))
+  await deleteSignatory(parseInt(id))
   return NextResponse.json({ ok: true })
 }

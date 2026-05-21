@@ -83,7 +83,7 @@ const SYSTEM_PROMPT = `คุณเป็นผู้เชี่ยวชาญ
 
 หมายเหตุ: ถ้าบริบทไม่มีข้อมูลพอสำหรับส่วนใด ส่งกลับเป็นสตริงว่าง ("") ห้ามคิดเอาเอง`
 
-// claude -p (ไม่มี argument) อ่าน prompt จาก stdin — หลีกเลี่ยงปัญหา shell escaping
+// claude -p อ่าน prompt จาก stdin — หลีกเลี่ยงปัญหา shell escaping
 function runClaude(prompt: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn('claude', ['-p', '--output-format', 'json'], {

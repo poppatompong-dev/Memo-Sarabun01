@@ -5,7 +5,7 @@ import MemoSheet from '@/components/MemoSheet'
 
 export default async function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const memo = getMemoById(parseInt(id))
+  const memo = await getMemoById(parseInt(id))
   if (!memo) notFound()
 
   return (

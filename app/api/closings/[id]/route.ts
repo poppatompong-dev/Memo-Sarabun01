@@ -7,7 +7,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const text = String(body.text || '').trim()
     if (!text) return NextResponse.json({ error: 'กรุณาระบุข้อความ' }, { status: 400 })
-    const c = updateClosing(parseInt(id), text)
+    const c = await updateClosing(parseInt(id), text)
     if (!c) return NextResponse.json({ error: 'ไม่พบคำลงท้าย' }, { status: 404 })
     return NextResponse.json(c)
   } catch (err) {
@@ -17,6 +17,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  deleteClosing(parseInt(id))
+  await deleteClosing(parseInt(id))
   return NextResponse.json({ ok: true })
 }
