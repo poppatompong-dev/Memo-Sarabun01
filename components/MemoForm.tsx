@@ -41,6 +41,11 @@ interface Closing {
   text: string
 }
 
+interface SavedRecipient {
+  id: number
+  name: string
+}
+
 interface Props {
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
@@ -55,6 +60,9 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const [sigEditor, setSigEditor] = useState<{ mode: 'add' | 'edit'; id?: number; name: string; title: string } | null>(null)
   const [closingList, setClosingList] = useState<Closing[]>([])
   const [closingEditor, setClosingEditor] = useState<{ mode: 'add' | 'edit'; id?: number; text: string } | null>(null)
+  const [savedRecipients, setSavedRecipients] = useState<SavedRecipient[]>([])
+  const [recipientEditor, setRecipientEditor] = useState<{ mode: 'add' | 'edit'; id?: number; name: string } | null>(null)
+  const [recipientInputModes, setRecipientInputModes] = useState<boolean[]>([false])
   const [aiLoading, setAiLoading] = useState(false)
   const [polishLoading, setPolishLoading] = useState(false)
   const [polishDone, setPolishDone] = useState(false)
@@ -101,7 +109,11 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
     const res = await fetch('/api/closings')
     setClosingList(await res.json())
   }
-  useEffect(() => { loadSignatories(); loadClosings() }, [])
+  const loadSavedRecipients = async () => {
+    const res = await fetch('/api/recipients')
+    setSavedRecipients(await res.json())
+  }
+  useEffect(() => { loadSignatories(); loadClosings(); loadSavedRecipients() }, [])
 
   const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
@@ -295,6 +307,61 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
     setForm(f => ({ ...f, doc_number: docPrefix ? docPrefix + thai : thai }))
   }
 
+  const allRecipientOptions = [...new Set([...recipientOptions, ...savedRecipients.map(r => r.name)])]
+
+  const toggleRecipientMode = (idx: number) => {
+    setRecipientInputModes(m => { const n = [...m]; n[idx] = !n[idx]; return n })
+  }
+  const updateRecipientValue = (idx: number, value: string) => {
+    const next = [...recipients]; next[idx] = value; setRecipients(next)
+  }
+  const addRecipientRow = () => {
+    setRecipients(r => [...r, ''])
+    setRecipientInputModes(m => [...m, false])
+  }
+  const removeRecipientRow = (idx: number) => {
+    setRecipients(r => r.filter((_, i) => i !== idx))
+    setRecipientInputModes(m => m.filter((_, i) => i !== idx))
+  }
+  const saveRecipientToList = async (name: string) => {
+    if (!name.trim() || allRecipientOptions.includes(name.trim())) return
+    setError('')
+    const res = await fetch('/api/recipients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() }),
+    })
+    if (res.ok) await loadSavedRecipients()
+    else { const d = await res.json(); setError(d.error ?? 'บันทึกไม่สำเร็จ') }
+  }
+  const openAddRecipient = () => setRecipientEditor({ mode: 'add', name: '' })
+  const openEditRecipient = (item: SavedRecipient) => setRecipientEditor({ mode: 'edit', id: item.id, name: item.name })
+  const saveRecipientEditor = async () => {
+    if (!recipientEditor || !recipientEditor.name.trim()) {
+      setError('กรุณาระบุชื่อผู้รับ'); return
+    }
+    setError('')
+    const isEdit = recipientEditor.mode === 'edit'
+    const oldName = isEdit ? savedRecipients.find(r => r.id === recipientEditor.id)?.name : null
+    const res = await fetch(isEdit ? `/api/recipients/${recipientEditor.id}` : '/api/recipients', {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: recipientEditor.name.trim() }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error ?? 'บันทึกไม่สำเร็จ'); return }
+    await loadSavedRecipients()
+    if (isEdit && oldName) {
+      setRecipients(r => r.map(v => v === oldName ? data.name : v))
+    }
+    setRecipientEditor(null)
+  }
+  const deleteRecipientItem = async (item: SavedRecipient) => {
+    if (!confirm(`ลบ "${item.name}" ออกจากรายชื่อ?`)) return
+    await fetch(`/api/recipients/${item.id}`, { method: 'DELETE' })
+    await loadSavedRecipients()
+  }
+
   const hasSelectedSig = !!form.signatory_name && sigList.some(s => s.name === form.signatory_name)
   const hasSelectedClosing = !!form.closing && closingList.some(c => c.text === form.closing)
 
@@ -391,22 +458,55 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
             <label className="label">เรียน</label>
             {recipients.map((rec, idx) => (
               <div key={idx} className="flex gap-2">
-                <select
-                  className="input flex-1"
-                  value={rec}
-                  onChange={e => {
-                    const next = [...recipients]
-                    next[idx] = e.target.value
-                    setRecipients(next)
-                  }}
-                >
-                  <option value="">-- เลือกผู้รับ --</option>
-                  {recipientOptions.map(r => <option key={r}>{r}</option>)}
-                </select>
+                {recipientInputModes[idx] ? (
+                  <>
+                    <input
+                      className="input flex-1"
+                      value={rec}
+                      onChange={e => updateRecipientValue(idx, e.target.value)}
+                      placeholder="พิมพ์ชื่อผู้รับ..."
+                      autoFocus
+                    />
+                    {rec.trim() && !allRecipientOptions.includes(rec.trim()) && (
+                      <button
+                        type="button"
+                        onClick={() => saveRecipientToList(rec)}
+                        className="shrink-0 px-3 rounded-lg text-sm font-medium transition-colors"
+                        style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--blue)' }}
+                        title="บันทึกลงรายการเพื่อใช้ครั้งต่อไป"
+                      >💾</button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleRecipientMode(idx)}
+                      className="shrink-0 px-3 rounded-lg text-sm font-medium transition-colors"
+                      style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--text-600)' }}
+                      title="กลับไปเลือกจากรายการ"
+                    >☰</button>
+                  </>
+                ) : (
+                  <>
+                    <select
+                      className="input flex-1"
+                      value={rec}
+                      onChange={e => updateRecipientValue(idx, e.target.value)}
+                    >
+                      <option value="">-- เลือกผู้รับ --</option>
+                      {allRecipientOptions.map(r => <option key={r}>{r}</option>)}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => toggleRecipientMode(idx)}
+                      className="shrink-0 px-3 rounded-lg text-sm font-medium transition-colors"
+                      style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--text-600)' }}
+                      title="พิมพ์เอง"
+                    >✎</button>
+                  </>
+                )}
                 {recipients.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => setRecipients(r => r.filter((_, i) => i !== idx))}
+                    onClick={() => removeRecipientRow(idx)}
                     className="shrink-0 w-10 flex items-center justify-center rounded-lg transition-colors"
                     style={{ border: '1.5px solid var(--border)', color: 'var(--text-300)', background: 'var(--card)' }}
                     title="ลบผู้รับ"
@@ -417,7 +517,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
             {recipients.length < 5 && (
               <button
                 type="button"
-                onClick={() => setRecipients(r => [...r, ''])}
+                onClick={addRecipientRow}
                 className="flex items-center gap-1.5 text-sm font-medium transition-colors"
                 style={{ color: 'var(--blue)' }}
               >
@@ -427,6 +527,60 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
                 เพิ่มผู้รับ
               </button>
             )}
+
+            {/* Saved recipients management */}
+            <div className="pt-2 mt-1" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-medium" style={{ color: 'var(--text-300)' }}>รายชื่อที่บันทึกไว้</span>
+                <button
+                  type="button"
+                  onClick={openAddRecipient}
+                  className="shrink-0 px-2 py-0.5 rounded text-xs font-medium transition-colors"
+                  style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: 'var(--blue)' }}
+                >✚ เพิ่มใหม่</button>
+              </div>
+              {savedRecipients.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {savedRecipients.map(r => (
+                    <div key={r.id} className="flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-sm"
+                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-600)' }}>
+                      <span>{r.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => openEditRecipient(r)}
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-xs opacity-50 hover:opacity-100 transition-opacity"
+                        title="แก้ไข"
+                      >✎</button>
+                      <button
+                        type="button"
+                        onClick={() => deleteRecipientItem(r)}
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-xs opacity-50 hover:opacity-100 transition-opacity"
+                        style={{ color: '#DC2626' }}
+                        title="ลบ"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {recipientEditor && (
+                <div className="mt-2 rounded-lg p-3 space-y-2 animate-fade-in"
+                  style={{ background: 'var(--surface)', border: '1.5px solid var(--blue)' }}>
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text-900)' }}>
+                    {recipientEditor.mode === 'add' ? '✚ เพิ่มรายชื่อผู้รับใหม่' : '✎ แก้ไขรายชื่อผู้รับ'}
+                  </p>
+                  <input
+                    className="input"
+                    value={recipientEditor.name}
+                    onChange={e => setRecipientEditor(r => r && ({ ...r, name: e.target.value }))}
+                    placeholder="เช่น นายกเทศมนตรีนครนครสวรรค์"
+                  />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={saveRecipientEditor} className="btn-primary text-sm py-2 px-4">บันทึก</button>
+                    <button type="button" onClick={() => setRecipientEditor(null)} className="btn-secondary text-sm py-2 px-4">ยกเลิก</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
