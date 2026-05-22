@@ -46,6 +46,9 @@ export default function NewMemoEditor({ initialMemo }: { initialMemo?: Memo } = 
     facts:         initialMemo ? !!initialMemo.content_facts         : true,
     consideration: initialMemo ? !!initialMemo.content_consideration : true,
   })
+  const [showHeadings, setShowHeadings] = useState({
+    background: true, facts: true, consideration: true,
+  })
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [showSpacing, setShowSpacing] = useState(false)
   const [showRulers, setShowRulers] = useState(false)
@@ -85,6 +88,9 @@ export default function NewMemoEditor({ initialMemo }: { initialMemo?: Memo } = 
     content_background:    sectionsEnabled.background    ? form.content_background    : '',
     content_facts:         sectionsEnabled.facts         ? form.content_facts         : '',
     content_consideration: sectionsEnabled.consideration ? form.content_consideration : '',
+    show_heading_background:    showHeadings.background,
+    show_heading_facts:         showHeadings.facts,
+    show_heading_consideration: showHeadings.consideration,
     signatory_name: form.signatory_name,
     signatory_title: form.signatory_title,
     closing: form.closing,
@@ -101,7 +107,7 @@ export default function NewMemoEditor({ initialMemo }: { initialMemo?: Memo } = 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,640px)] gap-6">
         {/* LEFT — form */}
         <div className="min-w-0">
-          <MemoForm form={form} setForm={setForm} recipients={recipients} setRecipients={setRecipients} attachments={attachments} setAttachments={setAttachments} memoId={initialMemo?.id} sectionsEnabled={sectionsEnabled} setSectionsEnabled={setSectionsEnabled} />
+          <MemoForm form={form} setForm={setForm} recipients={recipients} setRecipients={setRecipients} attachments={attachments} setAttachments={setAttachments} memoId={initialMemo?.id} sectionsEnabled={sectionsEnabled} setSectionsEnabled={setSectionsEnabled} showHeadings={showHeadings} setShowHeadings={setShowHeadings} />
         </div>
 
         {/* RIGHT — realtime preview (desktop only, full-height fit) */}

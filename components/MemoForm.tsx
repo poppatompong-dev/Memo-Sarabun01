@@ -56,6 +56,7 @@ interface SavedRecipient {
 }
 
 type SectionsEnabled = { background: boolean; facts: boolean; consideration: boolean }
+type ShowHeadings   = { background: boolean; facts: boolean; consideration: boolean }
 
 interface Props {
   form: FormState
@@ -67,6 +68,8 @@ interface Props {
   memoId?: number
   sectionsEnabled: SectionsEnabled
   setSectionsEnabled: React.Dispatch<React.SetStateAction<SectionsEnabled>>
+  showHeadings: ShowHeadings
+  setShowHeadings: React.Dispatch<React.SetStateAction<ShowHeadings>>
 }
 
 const ATTACHMENT_TYPE_LABELS: Record<AttachmentType, string> = {
@@ -76,7 +79,7 @@ const ATTACHMENT_TYPE_LABELS: Record<AttachmentType, string> = {
   other: 'อื่นๆ',
 }
 
-export default function MemoForm({ form, setForm, recipients, setRecipients, attachments, setAttachments, memoId, sectionsEnabled, setSectionsEnabled }: Props) {
+export default function MemoForm({ form, setForm, recipients, setRecipients, attachments, setAttachments, memoId, sectionsEnabled, setSectionsEnabled, showHeadings, setShowHeadings }: Props) {
   const router = useRouter()
   const [divisions, setDivisions] = useState<{ name: string; subCode: string }[]>([])
   const [sigList, setSigList] = useState<Signatory[]>([])
@@ -903,6 +906,21 @@ export default function MemoForm({ form, setForm, recipients, setRecipients, att
                     >
                       {enabled ? 'ใช้งาน' : 'ปิดใช้'}
                     </button>
+                    {enabled && (
+                      <button
+                        type="button"
+                        onClick={() => setShowHeadings(s => ({ ...s, [enabledKey]: !s[enabledKey] }))}
+                        className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
+                        style={{
+                          background: showHeadings[enabledKey] ? '#EFF6FF' : 'var(--surface)',
+                          color: showHeadings[enabledKey] ? '#1D4ED8' : 'var(--text-300)',
+                          border: '1px solid ' + (showHeadings[enabledKey] ? '#BFDBFE' : 'var(--border)'),
+                        }}
+                        title="แสดง/ซ่อนชื่อหัวข้อ (เรื่องเดิม/ข้อเท็จจริง/ข้อพิจารณา) ในเอกสาร"
+                      >
+                        {showHeadings[enabledKey] ? 'มีหัวข้อ' : 'ไม่มีหัวข้อ'}
+                      </button>
+                    )}
                     <div className="relative group ml-auto">
                       <button type="button" className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold transition-colors"
                         style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-300)' }}>?</button>

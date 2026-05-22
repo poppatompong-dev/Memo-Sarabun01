@@ -11,6 +11,9 @@ export interface MemoSheetData {
   content_background?: string
   content_facts?: string
   content_consideration?: string
+  show_heading_background?: boolean    // default true
+  show_heading_facts?: boolean         // default true
+  show_heading_consideration?: boolean // default true
   signatory_name?: string
   signatory_title?: string
   closing?: string
@@ -75,21 +78,21 @@ export default function MemoSheet({
       <section className="memo-body">
         {memo.content_background && (
           <div className="memo-section">
-            <p className="section-heading">เรื่องเดิม</p>
+            {memo.show_heading_background !== false && <p className="section-heading">เรื่องเดิม</p>}
             <div className="section-content">{renderLines(memo.content_background)}</div>
           </div>
         )}
 
         {memo.content_facts && (
           <div className="memo-section">
-            <p className="section-heading">ข้อเท็จจริง</p>
+            {memo.show_heading_facts !== false && <p className="section-heading">ข้อเท็จจริง</p>}
             <div className="section-content">{renderLines(memo.content_facts)}</div>
           </div>
         )}
 
         {memo.content_consideration && (
           <div className="memo-section">
-            <p className="section-heading">ข้อพิจารณา</p>
+            {memo.show_heading_consideration !== false && <p className="section-heading">ข้อพิจารณา</p>}
             <div className="section-content">{renderLines(memo.content_consideration)}</div>
           </div>
         )}
