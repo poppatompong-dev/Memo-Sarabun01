@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import MemoForm, { EMPTY_FORM, type FormState } from './MemoForm'
 import MemoSheet, { type MemoSheetData } from './MemoSheet'
 import SpacingPanel from './SpacingPanel'
+import type { Attachment, Memo } from '@/lib/db'
 
 const A4_W_PX = 210 * (96 / 25.4)  // ≈ 793.7
 const A4_H_PX = 297 * (96 / 25.4)  // ≈ 1122.5
@@ -10,9 +11,41 @@ const A4_H_PX = 297 * (96 / 25.4)  // ≈ 1122.5
 const MIN_SCALE = 0.3
 const MAX_SCALE = 1.5
 
-export default function NewMemoEditor() {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [recipients, setRecipients] = useState<string[]>(['นายกเทศมนตรีนครนครสวรรค์'])
+function memoToFormState(memo: Memo): FormState {
+  return {
+    department: memo.department,
+    division: memo.division,
+    doc_number: memo.doc_number,
+    doc_date: memo.doc_date,
+    subject: memo.subject,
+    recipient: memo.recipient,
+    content_background: memo.content_background,
+    content_facts: memo.content_facts,
+    content_consideration: memo.content_consideration,
+    signatory_name: memo.signatory_name,
+    signatory_title: memo.signatory_title,
+    closing: memo.closing,
+    ai_context: '',
+  }
+}
+
+export default function NewMemoEditor({ initialMemo }: { initialMemo?: Memo } = {}) {
+  const [form, setForm] = useState<FormState>(
+    initialMemo ? memoToFormState(initialMemo) : EMPTY_FORM
+  )
+  const [recipients, setRecipients] = useState<string[]>(
+    initialMemo
+      ? initialMemo.recipient.split('\n').filter(Boolean)
+      : ['นายกเทศมนตรีนครนครสวรรค์']
+  )
+  const [attachments, setAttachments] = useState<Attachment[]>(
+    initialMemo?.attachments ?? []
+  )
+  const [sectionsEnabled, setSectionsEnabled] = useState({
+    background:    initialMemo ? !!initialMemo.content_background    : true,
+    facts:         initialMemo ? !!initialMemo.content_facts         : true,
+    consideration: initialMemo ? !!initialMemo.content_consideration : true,
+  })
   const [showMobilePreview, setShowMobilePreview] = useState(false)
   const [showSpacing, setShowSpacing] = useState(false)
   const [showRulers, setShowRulers] = useState(false)
@@ -49,13 +82,14 @@ export default function NewMemoEditor() {
     department: form.department,
     division: form.division,
     recipient: recipients.filter(Boolean).join('\n'),
-    content_background: form.content_background,
-    content_facts: form.content_facts,
-    content_consideration: form.content_consideration,
+    content_background:    sectionsEnabled.background    ? form.content_background    : '',
+    content_facts:         sectionsEnabled.facts         ? form.content_facts         : '',
+    content_consideration: sectionsEnabled.consideration ? form.content_consideration : '',
     signatory_name: form.signatory_name,
     signatory_title: form.signatory_title,
     closing: form.closing,
     doc_date: form.doc_date,
+    attachments,
   }
 
   const zoomOut = () => setManualScale(s => Math.max(MIN_SCALE, +(((s ?? fitScale) - 0.1)).toFixed(2)))
@@ -67,7 +101,7 @@ export default function NewMemoEditor() {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,640px)] gap-6">
         {/* LEFT — form */}
         <div className="min-w-0">
-          <MemoForm form={form} setForm={setForm} recipients={recipients} setRecipients={setRecipients} />
+          <MemoForm form={form} setForm={setForm} recipients={recipients} setRecipients={setRecipients} attachments={attachments} setAttachments={setAttachments} memoId={initialMemo?.id} sectionsEnabled={sectionsEnabled} setSectionsEnabled={setSectionsEnabled} />
         </div>
 
         {/* RIGHT — realtime preview (desktop only, full-height fit) */}

@@ -13,7 +13,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     }, { status: 503 })
   }
 
-  const buf = generateDocx({
+  const buf = await generateDocx({
     สวนราชการ_กอง: memo.department,
     สวนราชการ_กลุมงาน: memo.division,
     เลขที: memo.doc_number,
@@ -26,6 +26,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     ขอพิจารณา: memo.content_consideration,
     ชื่อผูลงนาม: memo.signatory_name,
     ตำแหนง: memo.signatory_title,
+    closing: memo.closing,
   })
 
   const filename = encodeURIComponent(`บันทึกข้อความ_${memo.subject}_${memo.doc_date}.docx`)

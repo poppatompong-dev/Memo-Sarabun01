@@ -39,25 +39,24 @@ body::before {
   z-index: 0;
   background-image: url('/garuda.png');
   background-repeat: no-repeat;
-  background-position: calc(100% - 40px) calc(100% - 40px);
-  background-size: 240px;
-  opacity: 0.045;
+  background-position: center 38%;
+  background-size: 300px;
+  opacity: 0.065;
   filter: grayscale(100%);
 }
 
 body::after {
-  content: 'เทศบาลนครนครสวรรค์ · NAKHON SAWAN MUNICIPALITY';
+  content: 'เทศบาลนครนครสวรรค์  ·  NAKHON SAWAN MUNICIPALITY';
   position: fixed;
-  bottom: 50%;
-  right: -120px;
-  transform: rotate(-90deg);
-  transform-origin: center right;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: var(--font-sarabun), sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 6px;
+  letter-spacing: 7px;
   color: var(--text-300);
-  opacity: 0.25;
+  opacity: 0.5;
   pointer-events: none;
   white-space: nowrap;
   z-index: 0;

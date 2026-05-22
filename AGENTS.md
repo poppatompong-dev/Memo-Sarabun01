@@ -42,18 +42,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## MemoSheet Template Rules
 The A4 preview must match the Thai government standard 100%.
-**ทุกค่า audit แล้วเทียบกับ `templates/แบบบันทึกข้อความ.doc` + เอกสารอ้างอิง 4 ฉบับ — ดูรายละเอียดใน [SPEC.md](SPEC.md)**
+**ทุกค่า audit แล้วเทียบกับ `templates/บันทึกข้อความตอบแบบสำรวจ.docx` (authoritative — ตรวจ OOXML โดยตรง)**
 
-- **Font**: TH SarabunIT9 16pt (`font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif`) — ฟอนต์ใน .doc จริงคือ `TH SarabunIT๙` (มี ๙ เป็นเลขไทย)
-- **Title "บันทึกข้อความ"**: **29pt** (ไม่ bold, ใช้ Heading 1 style) — TEMPLATE + PDF 1 ยืนยัน
+- **Font**: TH SarabunIT9 16pt (`font-family: 'TH SarabunIT9', 'TH Sarabun New', 'Sarabun', serif`) — ฟอนต์ใน .docx จริงคือ `TH SarabunIT๙` (มี ๙ เป็นเลขไทย)
+- **Title "บันทึกข้อความ"**: **28pt bold** — ตรวจจาก OOXML: `w:sz="56"` (56 half-points = 28pt), `w:b` present
 - **Garuda**: 15mm (1.5 ซม. สำหรับบันทึกข้อความ — หนังสือภายนอกใช้ 3 ซม.)
-- **Labels (ส่วนราชการ/ที่/วันที่/เรื่อง)**: **20pt bold** — TEMPLATE + PDF 1 (PDF 3 บอก 16pt — เชื่อ TEMPLATE)
-- **"เรียน" label**: **16.5pt bold** — TEMPLATE
+- **Labels (ส่วนราชการ/ที่/วันที่/เรื่อง/เรียน)**: **20pt bold** ทุก label เท่ากัน — ตรวจจาก OOXML: `w:sz="40"` (40 half-points = 20pt)
 - **Meta rows**: each value uses `.meta-value-dotted` (`border-bottom: 1px dotted #000`) filling remaining width
 - **"ที่" + "วันที่"** on same row — "ที่" value uses `meta-half` (flex 0 0 38%)
-- **Margins (ตรวจจาก TEMPLATE)**: top 22.5mm, right 20mm, bottom 4mm, left 30mm
-- **First-line indent**: 72pt (≈ 2.5 ซม. = 2 Tab ตามระเบียบ + TEMPLATE)
-- **Section gaps**: ก่อน "เรื่องเดิม" (section แรก) 12pt; ก่อน "ข้อเท็จจริง"/"ข้อพิจารณา" 6pt — ตาม TEMPLATE
+- **Margins (ตรวจจาก OOXML `w:pgMar`)**: top 17.5mm (993 twips), right 20mm (1134), bottom 15mm (851), left 30mm (1701)
+- **First-line indent**: 72pt ≈ 25.4mm — ตรวจจาก OOXML: `w:firstLine="1440"` twips = 25.4mm (Thai standard 2 Tab)
+- **Section gaps**: 6pt สม่ำเสมอทุก section — ตรวจจาก OOXML: `w:before="120"` twips = 6pt ทุก body paragraph
 - **Closing gap (ก่อนลายเซ็น)**: 72pt = 3 บรรทัด (4 Enter) ตาม PDF 1
 - **เรียน multi-line**: use `.memo-recipient` (flex) + `.memo-recipient-list`; all lines align
 - **Preview scale**: `.memo-page-preview` ใช้ scaling จาก `NewMemoEditor.tsx` (inline style) — disabled in `@media print`

@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const subject = String(body.subject || '').trim()
     if (!subject) return NextResponse.json({ error: 'กรุณาระบุหัวเรื่อง' }, { status: 400 })
-    const result = await polishSubject(subject)
+    const result = await polishSubject(subject, body.model)
     return NextResponse.json(result)
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

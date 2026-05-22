@@ -17,12 +17,25 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
         <span className="text-sm truncate max-w-xs">{memo.subject}</span>
         <div className="ml-auto flex gap-3">
           <a
+            href="/compliance"
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm px-4 py-1.5 rounded-lg transition-colors"
+            title="ตรวจสอบหลักฐานความถูกต้องตามระเบียบสารบรรณ"
+          >
+            📋 ตรวจสอบระเบียบ
+          </a>
+          <a
+            href={`/edit/${memo.id}`}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-1.5 rounded-lg transition-colors"
+          >
+            ✏️ แก้ไข
+          </a>
+          <a
             href={`/api/export/${memo.id}`}
             className="bg-gray-600 hover:bg-gray-500 text-white text-sm px-4 py-1.5 rounded-lg transition-colors"
           >
             📄 ดาวน์โหลด DOCX
           </a>
-          <PrintActions />
+          <PrintActions memo={memo} />
         </div>
       </div>
 

@@ -117,6 +117,8 @@ function HistoryContent() {
                 <div className="flex items-center gap-2 shrink-0">
                   <a href={`/preview/${m.id}`}
                     className="btn-secondary py-1.5 px-3 text-sm">ดูตัวอย่าง</a>
+                  <a href={`/edit/${m.id}`}
+                    className="btn-secondary py-1.5 px-3 text-sm">แก้ไข</a>
                   <button onClick={() => downloadDocx(m.id)}
                     className="btn-secondary py-1.5 px-3 text-sm">DOCX</button>
                   <button onClick={() => deleteMemo(m.id)}

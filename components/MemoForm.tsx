@@ -5,6 +5,8 @@ import departments from '@/data/departments.json'
 import recipientOptions from '@/data/recipients.json'
 import { toThaiDate, toThaiDigits } from '@/lib/thai-date'
 import AIProgressModal, { type AIModalState } from './AIProgressModal'
+import { AI_MODELS, DEFAULT_MODEL, type ModelKey } from '@/lib/ai-models'
+import type { Attachment, AttachmentType } from '@/lib/db'
 
 const DEFAULT_REFERENCES = [
   'ระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ พ.ศ. ๒๕๒๖',
@@ -53,14 +55,28 @@ interface SavedRecipient {
   name: string
 }
 
+type SectionsEnabled = { background: boolean; facts: boolean; consideration: boolean }
+
 interface Props {
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
   recipients: string[]
   setRecipients: React.Dispatch<React.SetStateAction<string[]>>
+  attachments: Attachment[]
+  setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>
+  memoId?: number
+  sectionsEnabled: SectionsEnabled
+  setSectionsEnabled: React.Dispatch<React.SetStateAction<SectionsEnabled>>
 }
 
-export default function MemoForm({ form, setForm, recipients, setRecipients }: Props) {
+const ATTACHMENT_TYPE_LABELS: Record<AttachmentType, string> = {
+  file: 'ไฟล์เอกสาร',
+  url: 'URL / ลิงก์',
+  qr: 'QR Code',
+  other: 'อื่นๆ',
+}
+
+export default function MemoForm({ form, setForm, recipients, setRecipients, attachments, setAttachments, memoId, sectionsEnabled, setSectionsEnabled }: Props) {
   const router = useRouter()
   const [divisions, setDivisions] = useState<{ name: string; subCode: string }[]>([])
   const [sigList, setSigList] = useState<Signatory[]>([])
@@ -70,12 +86,22 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const [savedRecipients, setSavedRecipients] = useState<SavedRecipient[]>([])
   const [recipientEditor, setRecipientEditor] = useState<{ mode: 'add' | 'edit'; id?: number; name: string } | null>(null)
   const [recipientInputModes, setRecipientInputModes] = useState<boolean[]>([false])
+  const [collapsed, setCollapsed] = useState({ header: false, ai: false, content: false, sign: false })
+  const toggleSection = (k: keyof typeof collapsed) => setCollapsed(c => ({ ...c, [k]: !c[k] }))
   const [aiLoading, setAiLoading] = useState(false)
   const [polishLoading, setPolishLoading] = useState(false)
   const [polishDone, setPolishDone] = useState(false)
   const [subjectPolishLoading, setSubjectPolishLoading] = useState(false)
   const [subjectPolishDone, setSubjectPolishDone] = useState(false)
   const [aiModal, setAiModal] = useState<AIModalState | null>(null)
+  const [selectedModel, setSelectedModel] = useState<ModelKey>(() => {
+    if (typeof window === 'undefined') return DEFAULT_MODEL
+    return (localStorage.getItem('memo_ai_model') as ModelKey) ?? DEFAULT_MODEL
+  })
+  const selectModel = (m: ModelKey) => {
+    setSelectedModel(m)
+    localStorage.setItem('memo_ai_model', m)
+  }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [aiMeta, setAiMeta] = useState<{model: string; input_tokens: number; output_tokens: number} | null>(null)
@@ -93,6 +119,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
     if (!confirm('ล้างเนื้อหาทั้งหมดของบันทึกข้อความ?')) return
     setForm({ ...EMPTY_FORM, doc_date: new Date().toISOString().split('T')[0] })
     setRecipients([''])
+    setAttachments([])
     setAiMeta(null)
     setPolishDone(false)
   }
@@ -213,7 +240,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
       const res = await fetch('/api/polish-subject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: form.subject }),
+        body: JSON.stringify({ subject: form.subject, model: selectedModel }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -255,6 +282,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           division: form.division,
           recipient: form.recipient,
           context: form.ai_context,
+          model: selectedModel,
         }),
       })
       const data = await res.json()
@@ -302,6 +330,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           content_background: form.content_background,
           content_facts: form.content_facts,
           content_consideration: form.content_consideration,
+          model: selectedModel,
         }),
       })
       const data = await res.json()
@@ -339,27 +368,30 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
   const save = async () => {
     setSaving(true); setError('')
     try {
-      const res = await fetch('/api/memos', {
-        method: 'POST',
+      const url = memoId ? `/api/memos/${memoId}` : '/api/memos'
+      const method = memoId ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           doc_number: form.doc_number,
           subject: form.subject,
           department: form.department,
           division: form.division,
-          recipient: form.recipient,
-          content_background: form.content_background,
-          content_facts: form.content_facts,
-          content_consideration: form.content_consideration,
+          recipient: recipients.filter(Boolean).join('\n'),
+          content_background:    sectionsEnabled.background    ? form.content_background    : '',
+          content_facts:         sectionsEnabled.facts         ? form.content_facts         : '',
+          content_consideration: sectionsEnabled.consideration ? form.content_consideration : '',
           signatory_name: form.signatory_name,
           signatory_title: form.signatory_title,
           closing: form.closing,
           doc_date: form.doc_date,
+          attachments,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      router.push(`/preview/${data.id}`)
+      router.push(`/preview/${memoId ?? data.id}`)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -454,13 +486,24 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">01</span>
           <h2 className="section-title flex-1">ส่วนหัวบันทึกข้อความ</h2>
-          <button type="button"
-            onClick={() => { clearSection(['department','division','doc_number','doc_date','subject']); setRecipients(['']); setCustomDept(false) }}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
-            title="ล้างเฉพาะส่วนนี้">🗑 ล้าง</button>
+          {!collapsed.header && (
+            <button type="button"
+              onClick={() => { clearSection(['department','division','doc_number','doc_date','subject']); setRecipients(['']); setCustomDept(false) }}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+              title="ล้างเฉพาะส่วนนี้">🗑 ล้าง</button>
+          )}
+          <button type="button" onClick={() => toggleSection('header')}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-300)' }}
+            title={collapsed.header ? 'ขยาย' : 'หุบ'}>
+            <svg className={`w-4 h-4 transition-transform duration-200 ${collapsed.header ? '' : 'rotate-180'}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {!collapsed.header && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center justify-between">
               <label className="label">ส่วนราชการ (กอง / สำนัก)</label>
@@ -678,7 +721,7 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
               )}
             </div>
           </div>
-        </div>
+        </div>}
       </section>
 
       {/* AI Draft */}
@@ -687,25 +730,38 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
           <div className="flex items-center gap-3">
             <span className="step-badge">02</span>
             <h2 className="section-title flex-1" style={{ color: '#1E3A8A' }}>ให้ AI ช่วยร่างเนื้อหา</h2>
-            <button type="button"
-              onClick={() => { clearSection(['ai_context']); setAiMeta(null) }}
-              className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-              style={{ border: '1.5px solid #BFDBFE', background: 'white', color: '#DC2626' }}
-              title="ล้างบริบท">🗑 ล้าง</button>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>ไม่บังคับ</span>
-            <button onClick={() => setShowGuide(v => !v)}
-              className="flex items-center gap-1.5 text-sm font-medium transition-colors"
-              style={{ color: showGuide ? '#1D4ED8' : '#60A5FA' }}
-              title="ดูวิธีการใช้งาน">
-              <svg className={`w-4 h-4 transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`}
+            {!collapsed.ai && (
+              <>
+                <button type="button"
+                  onClick={() => { clearSection(['ai_context']); setAiMeta(null) }}
+                  className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                  style={{ border: '1.5px solid #BFDBFE', background: 'white', color: '#DC2626' }}
+                  title="ล้างบริบท">🗑 ล้าง</button>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>ไม่บังคับ</span>
+                <button onClick={() => setShowGuide(v => !v)}
+                  className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                  style={{ color: showGuide ? '#1D4ED8' : '#60A5FA' }}
+                  title="ดูวิธีการใช้งาน">
+                  <svg className={`w-4 h-4 transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="hidden sm:inline">{showGuide ? 'ซ่อนคู่มือ' : 'วิธีใช้'}</span>
+                </button>
+              </>
+            )}
+            <button type="button" onClick={() => toggleSection('ai')}
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+              style={{ border: '1px solid #BFDBFE', color: '#60A5FA' }}
+              title={collapsed.ai ? 'ขยาย' : 'หุบ'}>
+              <svg className={`w-4 h-4 transition-transform duration-200 ${collapsed.ai ? '' : 'rotate-180'}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
-              <span className="hidden sm:inline">{showGuide ? 'ซ่อนคู่มือ' : 'วิธีใช้'}</span>
             </button>
           </div>
 
-          {showGuide && (
+          {!collapsed.ai && showGuide && (
             <div className="rounded-xl p-4 text-sm space-y-3 animate-fade-in"
               style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E3A8A' }}>
               <p className="font-semibold flex items-center gap-2">
@@ -726,25 +782,51 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
             </div>
           )}
 
-          <div>
-            <label className="label" style={{ color: '#1E40AF' }}>บริบท / ความต้องการ</label>
-            <textarea className="input h-24" value={form.ai_context} onChange={set('ai_context')}
-              placeholder="อธิบายสิ่งที่ต้องการให้บันทึกข้อความระบุ เช่น วัตถุประสงค์ งบประมาณ จำนวน ระเบียบที่เกี่ยวข้อง..." />
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={aiDraft} disabled={aiLoading}
-              className="btn-primary flex items-center gap-2">
-              {aiLoading
-                ? <><span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />กำลังร่าง...</>
-                : <>✨ ให้ AI ร่างเนื้อหา</>}
-            </button>
-            {aiMeta && (
-              <span className="text-sm flex items-center gap-1.5 animate-fade-in" style={{ color: '#60A5FA' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                ร่างแล้ว · {aiMeta.input_tokens + aiMeta.output_tokens} tokens
-              </span>
-            )}
-          </div>
+          {!collapsed.ai && (
+            <>
+              {/* AI Model Selector */}
+              <div>
+                <label className="label" style={{ color: '#1E40AF' }}>โมเดล AI</label>
+                <div className="flex gap-2 flex-wrap">
+                  {(Object.keys(AI_MODELS) as ModelKey[]).map(k => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => selectModel(k)}
+                      className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm font-medium transition-all text-left"
+                      style={{
+                        border: `1.5px solid ${selectedModel === k ? '#2563EB' : '#BFDBFE'}`,
+                        background: selectedModel === k ? '#DBEAFE' : 'white',
+                        color: selectedModel === k ? '#1E40AF' : '#3B82F6',
+                      }}
+                    >
+                      <div className="font-semibold truncate">{AI_MODELS[k].label}</div>
+                      <div className="text-xs opacity-70 mt-0.5 truncate">{AI_MODELS[k].hint}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="label" style={{ color: '#1E40AF' }}>บริบท / ความต้องการ</label>
+                <textarea className="input h-24" value={form.ai_context} onChange={set('ai_context')}
+                  placeholder="อธิบายสิ่งที่ต้องการให้บันทึกข้อความระบุ เช่น วัตถุประสงค์ งบประมาณ จำนวน ระเบียบที่เกี่ยวข้อง..." />
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={aiDraft} disabled={aiLoading}
+                  className="btn-primary flex items-center gap-2">
+                  {aiLoading
+                    ? <><span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />กำลังร่าง...</>
+                    : <>✨ ให้ AI ร่างเนื้อหา</>}
+                </button>
+                {aiMeta && (
+                  <span className="text-sm flex items-center gap-1.5 animate-fade-in" style={{ color: '#60A5FA' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    ร่างแล้ว · {aiMeta.input_tokens + aiMeta.output_tokens} tokens
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -753,61 +835,94 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">03</span>
           <h2 className="section-title flex-1">เนื้อหาบันทึกข้อความ</h2>
-          <button type="button"
-            onClick={() => { clearSection(['content_background','content_facts','content_consideration']); setPolishDone(false) }}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
-            title="ล้างเนื้อหาทั้ง 3 ส่วน">🗑 ล้าง</button>
-          <div className="relative group">
-            <button
-              onClick={polishMemo}
-              disabled={polishLoading || !(form.content_background || form.content_facts || form.content_consideration)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-40"
-              style={{ background: polishDone ? '#F0FDF4' : 'var(--surface)', border: `1px solid ${polishDone ? '#86EFAC' : 'var(--border)'}`, color: polishDone ? '#16A34A' : 'var(--text-600)' }}>
-              {polishLoading
-                ? <><span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />กำลังตรวจแก้...</>
-                : polishDone
-                  ? <>✅ ปรับปรุงแล้ว</>
-                  : <>🔍 ให้ AI ตรวจแก้ภาษา</>}
-            </button>
-            <div className="tooltip-box">
-              วิเคราะห์และปรับปรุงภาษาราชการ ไวยากรณ์<br />และความถูกต้องตามระเบียบสารบรรณ
-            </div>
-          </div>
+          {!collapsed.content && (
+            <>
+              <button type="button"
+                onClick={() => { clearSection(['content_background','content_facts','content_consideration']); setPolishDone(false) }}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+                title="ล้างเนื้อหาทั้ง 3 ส่วน">🗑 ล้าง</button>
+              <div className="relative group">
+                <button
+                  onClick={polishMemo}
+                  disabled={polishLoading || !(form.content_background || form.content_facts || form.content_consideration)}
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-40"
+                  style={{ background: polishDone ? '#F0FDF4' : 'var(--surface)', border: `1px solid ${polishDone ? '#86EFAC' : 'var(--border)'}`, color: polishDone ? '#16A34A' : 'var(--text-600)' }}>
+                  {polishLoading
+                    ? <><span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />กำลังตรวจแก้...</>
+                    : polishDone
+                      ? <>✅ ปรับปรุงแล้ว</>
+                      : <>🔍 ให้ AI ตรวจแก้ภาษา</>}
+                </button>
+                <div className="tooltip-box">
+                  วิเคราะห์และปรับปรุงภาษาราชการ ไวยากรณ์<br />และความถูกต้องตามระเบียบสารบรรณ
+                </div>
+              </div>
+            </>
+          )}
+          <button type="button" onClick={() => toggleSection('content')}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-300)' }}
+            title={collapsed.content ? 'ขยาย' : 'หุบ'}>
+            <svg className={`w-4 h-4 transition-transform duration-200 ${collapsed.content ? '' : 'rotate-180'}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
 
-        {polishDone && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm animate-fade-in"
-            style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
-            <span>✅</span>
-            <span>AI ปรับปรุงภาษาเรียบร้อยแล้ว — ตรวจสอบและแก้ไขเพิ่มเติมได้ตามต้องการ</span>
-          </div>
-        )}
-
-        {[
-          { key: 'content_background' as const, label: 'เรื่องเดิม', hint: 'อ้างอิงเอกสาร มติ คำสั่ง หรือกฎระเบียบที่เกี่ยวข้อง', icon: '📌' },
-          { key: 'content_facts' as const, label: 'ข้อเท็จจริง', hint: 'อธิบายสาระสำคัญ รายละเอียด และข้อมูลประกอบที่จำเป็น', icon: '📊' },
-          { key: 'content_consideration' as const, label: 'ข้อพิจารณา', hint: 'เสนอแนวทาง ขออนุมัติ หรือขอความเห็นชอบ พร้อมอ้างอำนาจตามระเบียบ', icon: '✍️' },
-        ].map(({ key, label, hint, icon }) => (
-          <div key={key} className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-base">{icon}</span>
-              <label className="label mb-0">{label}</label>
-              <div className="relative group ml-auto">
-                <button type="button" className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold transition-colors"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-300)' }}>?</button>
-                <div className="tooltip-box tooltip-box-left">{hint}</div>
+        {!collapsed.content && (
+          <>
+            {polishDone && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm animate-fade-in"
+                style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
+                <span>✅</span>
+                <span>AI ปรับปรุงภาษาเรียบร้อยแล้ว — ตรวจสอบและแก้ไขเพิ่มเติมได้ตามต้องการ</span>
               </div>
-            </div>
-            <textarea
-              className={`input h-40 transition-all ${polishLoading ? 'opacity-50' : ''}`}
-              style={{ fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif" }}
-              value={form[key]} onChange={set(key)}
-              placeholder={`กรอก${label}...`}
-              disabled={polishLoading}
-            />
-          </div>
-        ))}
+            )}
+            {([
+              { key: 'content_background' as const, label: 'เรื่องเดิม', enabledKey: 'background' as const, hint: 'อ้างอิงเอกสาร มติ คำสั่ง หรือกฎระเบียบที่เกี่ยวข้อง', icon: '📌' },
+              { key: 'content_facts' as const, label: 'ข้อเท็จจริง', enabledKey: 'facts' as const, hint: 'อธิบายสาระสำคัญ รายละเอียด และข้อมูลประกอบที่จำเป็น', icon: '📊' },
+              { key: 'content_consideration' as const, label: 'ข้อพิจารณา', enabledKey: 'consideration' as const, hint: 'เสนอแนวทาง ขออนุมัติ หรือขอความเห็นชอบ พร้อมอ้างอำนาจตามระเบียบ', icon: '✍️' },
+            ] as const).map(({ key, label, enabledKey, hint, icon }) => {
+              const enabled = sectionsEnabled[enabledKey]
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{icon}</span>
+                    <label className="label mb-0" style={{ color: enabled ? undefined : 'var(--text-300)' }}>{label}</label>
+                    <button
+                      type="button"
+                      onClick={() => setSectionsEnabled(s => ({ ...s, [enabledKey]: !s[enabledKey] }))}
+                      className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
+                      style={{
+                        background: enabled ? '#DCFCE7' : 'var(--surface)',
+                        color: enabled ? '#15803D' : 'var(--text-300)',
+                        border: '1px solid ' + (enabled ? '#BBF7D0' : 'var(--border)'),
+                      }}
+                    >
+                      {enabled ? 'ใช้งาน' : 'ปิดใช้'}
+                    </button>
+                    <div className="relative group ml-auto">
+                      <button type="button" className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold transition-colors"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-300)' }}>?</button>
+                      <div className="tooltip-box tooltip-box-left">{hint}</div>
+                    </div>
+                  </div>
+                  {enabled && (
+                    <textarea
+                      className={`input h-40 transition-all ${polishLoading ? 'opacity-50' : ''}`}
+                      style={{ fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif" }}
+                      value={form[key]} onChange={set(key)}
+                      placeholder={`กรอก${label}...`}
+                      disabled={polishLoading}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </>
+        )}
       </section>
 
       {/* ลงนาม */}
@@ -815,12 +930,24 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
         <div className="flex items-center gap-3 mb-2">
           <span className="step-badge">04</span>
           <h2 className="section-title flex-1">ลงนาม</h2>
-          <button type="button"
-            onClick={() => clearSection(['signatory_name','signatory_title','closing'])}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
-            title="ล้างผู้ลงนาม + คำลงท้าย">🗑 ล้าง</button>
+          {!collapsed.sign && (
+            <button type="button"
+              onClick={() => clearSection(['signatory_name','signatory_title','closing'])}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style={{ border: '1.5px solid var(--border)', background: 'var(--card)', color: '#DC2626' }}
+              title="ล้างผู้ลงนาม + คำลงท้าย">🗑 ล้าง</button>
+          )}
+          <button type="button" onClick={() => toggleSection('sign')}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-300)' }}
+            title={collapsed.sign ? 'ขยาย' : 'หุบ'}>
+            <svg className={`w-4 h-4 transition-transform duration-200 ${collapsed.sign ? '' : 'rotate-180'}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
+        {!collapsed.sign && (<>
 
         {/* คำลงท้าย */}
         <div className="mb-4">
@@ -918,6 +1045,66 @@ export default function MemoForm({ form, setForm, recipients, setRecipients }: P
             </div>
           </div>
         )}
+        </>)}
+      </section>
+
+      {/* สิ่งที่ส่งมาด้วย */}
+      <section className="section-card">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="step-badge">05</span>
+          <h2 className="section-title flex-1">สิ่งที่ส่งมาด้วย</h2>
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface)', color: 'var(--text-300)', border: '1px solid var(--border)' }}>ไม่บังคับ</span>
+        </div>
+        <div className="space-y-2">
+          {attachments.map((att, idx) => (
+            <div key={idx} className="flex gap-2 items-start animate-fade-in">
+              <span className="mt-2.5 text-sm font-mono shrink-0" style={{ color: 'var(--text-300)' }}>{toThaiDigits(String(idx + 1))}.</span>
+              <select
+                className="input shrink-0 w-36"
+                value={att.type}
+                onChange={e => setAttachments(a => a.map((x, i) => i === idx ? { ...x, type: e.target.value as AttachmentType } : x))}
+              >
+                {(Object.keys(ATTACHMENT_TYPE_LABELS) as AttachmentType[]).map(t => (
+                  <option key={t} value={t}>{ATTACHMENT_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                <input
+                  className="input"
+                  value={att.label}
+                  onChange={e => setAttachments(a => a.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
+                  placeholder="ชื่อเอกสาร / รายละเอียด"
+                />
+                {(att.type === 'url' || att.type === 'qr') && (
+                  <input
+                    className="input text-sm"
+                    value={att.url ?? ''}
+                    onChange={e => setAttachments(a => a.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
+                    placeholder="https://..."
+                  />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAttachments(a => a.filter((_, i) => i !== idx))}
+                className="mt-2 shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-red-50"
+                style={{ border: '1.5px solid var(--border)', color: 'var(--text-300)' }}
+                title="ลบรายการนี้"
+              >✕</button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAttachments(a => [...a, { type: 'file', label: '' }])}
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors mt-1"
+            style={{ color: 'var(--blue)' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            เพิ่มสิ่งที่ส่งมาด้วย
+          </button>
+        </div>
       </section>
 
       {/* Actions */}

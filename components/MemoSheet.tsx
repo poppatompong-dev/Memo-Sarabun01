@@ -1,5 +1,6 @@
 import '@/app/preview/[id]/print.css'
 import { toThaiDate, toThaiDigits } from '@/lib/thai-date'
+import type { Attachment } from '@/lib/db'
 
 export interface MemoSheetData {
   doc_number?: string
@@ -14,6 +15,7 @@ export interface MemoSheetData {
   signatory_title?: string
   closing?: string
   doc_date?: string
+  attachments?: Attachment[]
 }
 
 export default function MemoSheet({
@@ -101,6 +103,23 @@ export default function MemoSheet({
           <p className="sig-name">({memo.signatory_name || ' '})</p>
           <p className="sig-title">{memo.signatory_title || ''}</p>
         </div>
+
+        {memo.attachments && memo.attachments.length > 0 && (
+          <div className="memo-attachments">
+            <p className="memo-attachments-heading">สิ่งที่ส่งมาด้วย</p>
+            <ol className="memo-attachment-list">
+              {memo.attachments.map((att, i) => (
+                <li key={i} className="memo-attachment-item">
+                  <span className="memo-attachment-num">{toThaiDigits(String(i + 1))}.</span>
+                  <span className="memo-attachment-label">{att.label}</span>
+                  {att.url && (
+                    <span className="memo-attachment-url"> ({att.url})</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </footer>
     </article>
   )

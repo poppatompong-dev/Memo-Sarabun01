@@ -53,8 +53,9 @@ async function db(): Promise<Client> {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`)
 
-  // Migration: add closing column for DBs created before it was in the schema
+  // Migrations
   try { await c.execute('ALTER TABLE memos ADD COLUMN closing TEXT') } catch { /* exists */ }
+  try { await c.execute("ALTER TABLE memos ADD COLUMN attachments TEXT DEFAULT '[]'") } catch { /* exists */ }
 
   // Seed signatories on first run
   const { rows: sr } = await c.execute('SELECT COUNT(*) as cnt FROM signatories')
@@ -91,6 +92,14 @@ function n(v: unknown): number { return v == null ? 0 : Number(v) }
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
+export type AttachmentType = 'file' | 'url' | 'qr' | 'other'
+
+export interface Attachment {
+  type: AttachmentType
+  label: string
+  url?: string
+}
+
 export interface Memo {
   id?: number
   doc_number: string
@@ -105,6 +114,7 @@ export interface Memo {
   signatory_title: string
   closing: string
   doc_date: string
+  attachments?: Attachment[]
   created_at?: string
 }
 
@@ -134,15 +144,35 @@ export async function createMemo(memo: Omit<Memo, 'id' | 'created_at'>): Promise
   const rs = await c.execute({
     sql: `INSERT INTO memos (doc_number, subject, department, division, recipient,
             content_background, content_facts, content_consideration,
-            signatory_name, signatory_title, closing, doc_date)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            signatory_name, signatory_title, closing, doc_date, attachments)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       memo.doc_number, memo.subject, memo.department, memo.division, memo.recipient,
       memo.content_background, memo.content_facts, memo.content_consideration,
       memo.signatory_name, memo.signatory_title, memo.closing, memo.doc_date,
+      JSON.stringify(memo.attachments ?? []),
     ],
   })
   return getMemoById(Number(rs.lastInsertRowid)) as Promise<Memo>
+}
+
+export async function updateMemo(id: number, fields: Omit<Memo, 'id' | 'created_at'>): Promise<Memo | null> {
+  const c = await db()
+  await c.execute({
+    sql: `UPDATE memos SET
+      doc_number=?, subject=?, department=?, division=?, recipient=?,
+      content_background=?, content_facts=?, content_consideration=?,
+      signatory_name=?, signatory_title=?, closing=?, doc_date=?, attachments=?
+      WHERE id=?`,
+    args: [
+      fields.doc_number, fields.subject, fields.department, fields.division, fields.recipient,
+      fields.content_background, fields.content_facts, fields.content_consideration,
+      fields.signatory_name, fields.signatory_title, fields.closing, fields.doc_date,
+      JSON.stringify(fields.attachments ?? []),
+      id,
+    ],
+  })
+  return getMemoById(id)
 }
 
 export async function getMemoById(id: number): Promise<Memo | null> {
@@ -156,7 +186,9 @@ export async function getMemoById(id: number): Promise<Memo | null> {
     content_background: s(r.content_background), content_facts: s(r.content_facts),
     content_consideration: s(r.content_consideration),
     signatory_name: s(r.signatory_name), signatory_title: s(r.signatory_title),
-    closing: s(r.closing), doc_date: s(r.doc_date), created_at: s(r.created_at),
+    closing: s(r.closing), doc_date: s(r.doc_date),
+    attachments: (() => { try { return JSON.parse(s(r.attachments) || '[]') } catch { return [] } })(),
+    created_at: s(r.created_at),
   }
 }
 

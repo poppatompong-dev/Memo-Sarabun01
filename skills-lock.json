@@ -7,6 +7,12 @@
       "skillPath": "skills/docx/SKILL.md",
       "computedHash": "2622ca8c11f6cea4c706dfed57d1b727af8f1d1b0b0d36ae60cfd8d17bd45e85"
     },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
